@@ -1,0 +1,35 @@
+Options -MultiViews -Indexes
+DirectoryIndex index.html
+
+AddType application/manifest+json .webmanifest
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Send everyone to HTTPS. The app cannot install or use printers without it.
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:\d+)?$
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Many hosts strip this header before PHP sees it, which would sign everyone out.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # The API and product photos go to Laravel.
+    RewriteRule ^(api|storage)(/.*)?$ index.php [L]
+
+    # Files that exist are served as they are.
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Every other address is a screen in the app.
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    # These must never be cached, or devices would miss updates.
+    <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest)$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>

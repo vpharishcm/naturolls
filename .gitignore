@@ -1,0 +1,30 @@
+# The built upload package. It holds FIRST_LOGIN.txt, the server's .env with its keys, and a full copy of the code.
+/dist-hosting/
+FIRST_LOGIN.txt
+
+# Secrets and per-machine settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+naturolls_deploy
+naturolls_deploy.pub
+
+# Database dumps and backups
+*.sql
+*.sql.gz
+*.enc
+
+# Rebuilt from the lock files, by you or by GitHub
+node_modules/
+backend/vendor/
+frontend/dist/
+frontend/dev-dist/
+
+# Editors, tools and the operating system
+.claude/settings.local.json
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,8 @@
+* text=auto
+# Shell scripts run on Linux (GitHub and the server), so they must keep Linux line endings.
+*.sh text eol=lf
+*.yml text eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary

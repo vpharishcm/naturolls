@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: #FFF7EC;
+  color: #1E1B2E;
+  font-family: Nunito, system-ui, sans-serif;
+  font-weight: 700;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+/* Sizes follow the phone design. A 10-inch 1280x800 tablet shows more at once, buttons staying finger-sized. */
+@media screen and (min-width: 768px), screen and (min-width: 560px) and (orientation: portrait) {
+  #root { zoom: 0.88; }
+}
+button, a, label { touch-action: manipulation; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:focus-visible { outline: 3px solid #1E1B2E; outline-offset: 2px; }
+
+.scroll-x { overflow-x: auto; scrollbar-width: none; }
+.scroll-x::-webkit-scrollbar { display: none; }
+
+/* Only the receipt reaches the thermal printer. */
+#print-root { display: none; }
+@media print {
+  body * { visibility: hidden; }
+  #print-root, #print-root * { visibility: visible; }
+  #print-root { display: block; position: absolute; left: 0; top: 0; background: #fff; }
+  @page { margin: 0; }
+}
+.print-only-report { display: none; }
+@media print {
+  .report-printable, .report-printable * { visibility: visible; }
+  .report-printable { position: absolute; left: 0; top: 0; width: 100%; }
+  .no-print { display: none !important; }
+}
