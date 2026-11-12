@@ -45,6 +45,14 @@ Open the bill from **All Orders** and tap **Edit bill**. Change quantities, remo
 - **Not editable:** a bill that has had a refund.
 - **Records:** the old items, total and reason are kept in **Settings › Audit**, and changes appear in the staff modifications report.
 
+## Fixing the payment mode
+
+If the wrong payment mode was tapped (for example Cash instead of UPI), tap **Wrong payment mode? Change it** on the Paid! screen, or open the bill from **All Orders** and tap **Change payment mode**. Pick the right mode, or tap **+ Split between modes** if the customer paid part by each. Enter a reason and press **SAVE PAYMENT**. The amount received stays the same; only how it came in changes, and the day's Cash, UPI and Card totals in **Payments** move with it.
+
+- **Time limit:** staff can change it for 30 minutes after billing. The owner can change it at any time and can set the limit in **Settings › Business** (**Staff can change how a bill was paid for**).
+- **Not changeable:** a bill with a refund, a payment already matched with the bank or UPI statement, or a bill from a day whose cash is already closed.
+- **Records:** the old and new payment modes and the reason are kept in **Settings › Audit**.
+
 ## Offers
 
 Create offers in **Settings › Offers**. Choose what each one covers: whole order, selected items or selected categories.

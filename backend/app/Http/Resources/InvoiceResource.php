@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Services\BillEditService;
+use App\Services\PaymentEditService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,6 +33,8 @@ class InvoiceResource extends JsonResource
             'edited_at' => $this->edited_at?->toIso8601String(),
             'can_edit' => $request->user() ? app(BillEditService::class)->canEdit($this->resource, $request->user()) : false,
             'edit_until' => $request->user() ? app(BillEditService::class)->editableUntil($this->resource, $request->user())?->toIso8601String() : null,
+            'can_edit_payment' => $request->user() ? app(PaymentEditService::class)->canEdit($this->resource, $request->user()) : false,
+            'payment_edit_until' => $request->user() ? app(PaymentEditService::class)->editableUntil($this->resource, $request->user())?->toIso8601String() : null,
             'payments' => $this->whenLoaded('payments', fn () => PaymentResource::collection($this->payments)),
         ];
     }

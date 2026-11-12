@@ -91,6 +91,7 @@ Failure:
 | `POST /invoices/{id}/refunds` | `amount`, `method`, `reason`, `reference?`, `restock[]?`, *PIN*, permission refund.create |
 | `POST /invoices/{id}/edit/preview` | `expected_edit_count`, `items[]` of `{id, quantity}` for lines on the bill or `{product_id, product_variant_id?, quantity}` for new ones. Lines left out are removed. Returns totals and `difference`, and saves nothing. |
 | `POST /invoices/{id}/edit` | The above plus `reason`, `return_to_stock?` (default true), and `settlement_method` when the total changes. Refused with `edit_window_closed` when staff are past the time limit, `invoice_refunded` after a refund. |
+| `POST /invoices/{id}/payments/edit` | `payments[]` of `{method, amount, reference?, tendered?}` (1 to 3), `reason`. Replaces how the bill was paid; the amounts must add up to the money received. Refused with `payment_edit_window_closed` past the staff limit (`billing.payment_edit_minutes`; none with `invoice.edit_anytime`), `payment_mismatch`, `payment_reconciled`, `cash_closed` or `invoice_refunded`. Invoices return `can_edit_payment` and `payment_edit_until`. |
 | `GET /printer/status`, `GET /printer/logs` | |
 
 ## Payments

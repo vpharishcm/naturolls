@@ -134,6 +134,8 @@ export interface Invoice {
   edited_at: string | null;
   can_edit: boolean;
   edit_until: string | null;
+  can_edit_payment: boolean;
+  payment_edit_until: string | null;
   payments?: Payment[];
 }
 

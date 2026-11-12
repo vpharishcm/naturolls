@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { EditPaymentModal } from '../components/EditPaymentModal';
 import { ProductArt } from '../components/ProductArt';
 import { Button, ErrorBanner, Field, inputClass, Loading, Modal, PinField, useBusy } from '../components/ui';
 import { usePrint } from '../components/Receipt';
@@ -54,7 +55,7 @@ function OrderScreenBody() {
     );
   }
   if (view === 'done' && invoice) {
-    return <DoneView invoice={invoice} onNew={() => navigate(`/order/new?fresh=${Date.now()}`, { replace: true })} />;
+    return <DoneView invoice={invoice} onChanged={setInvoice} onNew={() => navigate(`/order/new?fresh=${Date.now()}`, { replace: true })} />;
   }
   if (view === 'bill') {
     return <BillView draft={draft} onBack={() => setView('menu')} onPaid={(inv) => { setInvoice(inv); setView('done'); }} />;
@@ -503,8 +504,10 @@ function DiscountModal({ value, onClose, onApply }: { value: { type: 'percent' |
   );
 }
 
-function DoneView({ invoice, onNew }: { invoice: Invoice; onNew: () => void }) {
+function DoneView({ invoice, onNew, onChanged }: { invoice: Invoice; onNew: () => void; onChanged: (i: Invoice) => void }) {
   const { print, state, outcome, portal } = usePrint();
+  const notify = useApp((s) => s.notify);
+  const [changingPayment, setChangingPayment] = useState(false);
   const label = (invoice.payments ?? []).map((p) => p.method.toUpperCase()).join(' + ') || 'No payment due';
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3.5 p-6">
@@ -516,6 +519,8 @@ function DoneView({ invoice, onNew }: { invoice: Invoice; onNew: () => void }) {
       <div className="text-2xl font-extrabold">{rupees(invoice.total)} · {label}</div>
       <div className="text-lg font-bold text-muted">{invoice.invoice_number}</div>
       <div className="text-lg font-bold text-muted">Thank you for visiting</div>
+      {invoice.can_edit_payment && <button type="button" onClick={() => setChangingPayment(true)} className="min-h-[52px] rounded-2xl border-2 border-line bg-white px-4 text-lg font-black">Wrong payment mode? Change it</button>}
+      {changingPayment && <EditPaymentModal invoice={invoice} onClose={() => setChangingPayment(false)} onDone={(updated) => { setChangingPayment(false); onChanged(updated); notify('Payment mode updated.', 'ok'); }} />}
       {state === 'failed' && <div role="alert" className="w-full max-w-md rounded-2xl bg-rust-soft px-4 py-3 text-center text-[17px] font-extrabold text-rust">Bill is saved, but it did not print. {outcome?.error}</div>}
       {state === 'done' && <div role="status" className="text-lg font-extrabold text-mint">Printed{outcome?.duplicate ? ' (duplicate)' : ''}</div>}
       <div className="mt-5 flex w-full max-w-md flex-col gap-2.5">

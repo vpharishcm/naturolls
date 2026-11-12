@@ -62,6 +62,7 @@ Route::middleware(['auth:sanctum', 'idempotent'])->group(function () {
     Route::post('invoices/{invoice}/refunds', [BillingController::class, 'refund']);
     Route::post('invoices/{invoice}/edit/preview', [BillingController::class, 'previewEdit']);
     Route::post('invoices/{invoice}/edit', [BillingController::class, 'edit']);
+    Route::post('invoices/{invoice}/payments/edit', [BillingController::class, 'editPayment']);
     Route::get('printer/status', [BillingController::class, 'printerStatus']);
     Route::get('printer/logs', [BillingController::class, 'printLogs']);
 

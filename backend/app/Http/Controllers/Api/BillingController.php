@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CashClosingRequest;
 use App\Http\Requests\CheckoutRequest;
 use App\Http\Requests\EditInvoiceRequest;
+use App\Http\Requests\EditPaymentRequest;
 use App\Http\Requests\PaymentCallbackRequest;
 use App\Http\Requests\PreviewBillRequest;
 use App\Http\Requests\PrintLogRequest;
@@ -19,6 +20,7 @@ use App\Models\Payment;
 use App\Models\PrinterLog;
 use App\Services\BillEditService;
 use App\Services\BillingService;
+use App\Services\PaymentEditService;
 use App\Services\PaymentService;
 use App\Services\ReceiptService;
 use Illuminate\Http\Request;
@@ -30,6 +32,7 @@ class BillingController extends Controller
         private PaymentService $payments,
         private ReceiptService $receipts,
         private BillEditService $edits,
+        private PaymentEditService $paymentEdits,
     ) {}
 
     public function preview(PreviewBillRequest $request, Order $order)
@@ -109,6 +112,12 @@ class BillingController extends Controller
     public function edit(EditInvoiceRequest $request, Invoice $invoice)
     {
         return $this->ok($this->invoiceData($this->edits->edit($invoice, $request->validated(), $request->user())));
+    }
+
+    /** Corrects how a bill was paid (cash, UPI, card), within the time allowed. */
+    public function editPayment(EditPaymentRequest $request, Invoice $invoice)
+    {
+        return $this->ok($this->invoiceData($this->paymentEdits->edit($invoice, $request->validated(), $request->user())));
     }
 
     public function payments(Request $request)

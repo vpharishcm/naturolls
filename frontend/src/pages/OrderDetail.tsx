@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { CustomerModal } from './OrderScreen';
 import { usePrint } from '../components/Receipt';
 import { BackLink, Badge, Button, Card, Chip, ErrorBanner, Field, inputClass, Loading, Modal, PinField, useBusy } from '../components/ui';
+import { EditPaymentModal } from '../components/EditPaymentModal';
 import { useCatalog } from '../hooks/useCatalog';
 import { api } from '../lib/api';
 import { dateTime, qty, rupees } from '../lib/format';
@@ -224,6 +225,7 @@ function InvoicePanel({ invoiceId, items, orderKey }: { invoiceId: number; items
   const { print, state, outcome, portal } = usePrint();
   const [refunding, setRefunding] = useState(false);
   const [editingBill, setEditingBill] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(false);
   if (!invoice) return null;
   const discount = Number(invoice.promotion_discount) + Number(invoice.manual_discount) + Number(invoice.loyalty_discount);
   return (
@@ -250,7 +252,9 @@ function InvoicePanel({ invoiceId, items, orderKey }: { invoiceId: number; items
         <Button tone="plain" disabled={state === 'printing'} onClick={() => print(invoice.id).then(() => qc.invalidateQueries({ queryKey: key }))}>{invoice.print_count > 0 ? 'Reprint' : 'Print'}</Button>
         <Button tone="danger" onClick={() => setRefunding(true)}>Refund</Button>
         {invoice.can_edit && <Button tone="plain" className="col-span-2" onClick={() => setEditingBill(true)}>Edit bill</Button>}
+        {invoice.can_edit_payment && <Button tone="plain" className="col-span-2" onClick={() => setEditingPayment(true)}>Change payment mode</Button>}
       </div>
+      {editingPayment && <EditPaymentModal invoice={invoice} onClose={() => setEditingPayment(false)} onDone={(updated) => { setEditingPayment(false); qc.setQueryData(key, updated); qc.invalidateQueries({ queryKey: ['payments'] }); notify('Payment mode updated.', 'ok'); }} />}
       {editingBill && <EditBillModal invoice={invoice} items={items} onClose={() => setEditingBill(false)} onDone={() => { setEditingBill(false); qc.invalidateQueries({ queryKey: key }); qc.invalidateQueries({ queryKey: orderKey }); notify('Bill updated. Print the new bill.', 'ok'); }} />}
       {refunding &&<RefundModal invoice={invoice} onClose={() => setRefunding(false)} onDone={() => { setRefunding(false); qc.invalidateQueries({ queryKey: key }); }} />}
     </Card>

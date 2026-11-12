@@ -20,6 +20,7 @@ class SettingsService
         'tax.prices_inclusive' => true,
         'discount.staff_max_percent' => 0,
         'billing.staff_edit_minutes' => 30,
+        'billing.payment_edit_minutes' => 30,
         'inventory.low_stock_default' => 5,
         'loyalty.enabled' => true,
         'loyalty.points_per_100' => 5,

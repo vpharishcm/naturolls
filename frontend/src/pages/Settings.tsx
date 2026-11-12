@@ -86,6 +86,7 @@ function BusinessTab() {
       )}
       <Field label="Staff can discount up to (%) without the owner PIN"><input className={inputClass} inputMode="decimal" value={String(f.values['discount.staff_max_percent'] ?? 0)} onChange={(e) => f.set('discount.staff_max_percent', Number(e.target.value) || 0)} /></Field>
       <Field label="Staff can edit a bill for (minutes after billing)"><input className={inputClass} inputMode="numeric" value={String(f.values['billing.staff_edit_minutes'] ?? 30)} onChange={(e) => f.set('billing.staff_edit_minutes', Number(e.target.value) || 0)} /></Field>
+      <Field label="Staff can change how a bill was paid for (minutes after billing)"><input className={inputClass} inputMode="numeric" value={String(f.values['billing.payment_edit_minutes'] ?? 30)} onChange={(e) => f.set('billing.payment_edit_minutes', Number(e.target.value) || 0)} /></Field>
       <SaveBar form={f} />
     </>
   );
