@@ -3,10 +3,27 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Badge, Card, Empty, ErrorBanner, inputClass, Loading, PageHeader } from '../components/ui';
 import { api } from '../lib/api';
-import { dateTime, itemLabel, rupees } from '../lib/format';
+import { dateTime, itemLabel, qty, rupees } from '../lib/format';
 import { localStore, localTotal, type LocalOrder, type SyncNote } from '../lib/offline';
 import type { Order } from '../lib/types';
 import { useApp } from '../stores/app';
+
+/** What is in an order, so staff can tell apart orders with the same total. Same items at different prices are shown once. */
+function ItemChips({ items }: { items: { name: string; quantity: string | number }[] }) {
+  const merged = new Map<string, number>();
+  for (const i of items) merged.set(i.name, (merged.get(i.name) ?? 0) + Number(i.quantity));
+  const lines = [...merged].filter(([, n]) => n > 0);
+  if (!lines.length) return null;
+  return (
+    <ul aria-label="Items in this order" className="mt-2 flex flex-wrap gap-1.5">
+      {lines.map(([name, n]) => (
+        <li key={name} className="rounded-xl border border-line-soft bg-cream px-2.5 py-1 text-[16px] font-extrabold leading-tight">
+          <span className="text-berry">{qty(n)} ×</span> {name}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function OrdersToBill() {
   const online = useApp((s) => s.online);
@@ -17,7 +34,7 @@ export default function OrdersToBill() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['orders', 'unbilled', search],
-    queryFn: () => api.page<Order>('/orders', { status: 'unbilled', search, per_page: 100 }),
+    queryFn: () => api.page<Order>('/orders', { status: 'unbilled', search, per_page: 100, include_items: 1 }),
     enabled: online,
     refetchInterval: 5000,
   });
@@ -61,6 +78,7 @@ export default function OrdersToBill() {
                   <div className="text-base font-bold text-muted">{itemLabel(o.items.reduce((s, i) => s + i.quantity, 0))}</div>
                 </div>
               </div>
+              <ItemChips items={o.items} />
             </Card>
           </Link>
         ))}
@@ -80,6 +98,7 @@ export default function OrdersToBill() {
                   <div className="text-base font-bold text-muted">{itemLabel(Number(o.item_count))}</div>
                 </div>
               </div>
+              {o.items && <ItemChips items={o.items} />}
             </Link>
             <div className="mt-2.5 grid grid-cols-2 gap-2">
               <Link to={`/order/${o.id}`} className="flex min-h-[52px] items-center justify-center rounded-2xl border-2 border-line text-lg font-black">Add items</Link>

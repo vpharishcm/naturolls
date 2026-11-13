@@ -32,6 +32,21 @@ class OrderInventoryTest extends TestCase
         $this->assertSame('unbilled', $a['status']);
     }
 
+    public function test_order_list_includes_items_only_when_asked(): void
+    {
+        $mango = $this->product(price: 30, extra: ['name' => 'Mango']);
+        $order = $this->newOrder();
+        $this->addItem($order, $mango, 2);
+
+        $plain = $this->getJson('/api/v1/orders?status=unbilled')->assertOk()->json('data.0');
+        $this->assertArrayNotHasKey('items', $plain);
+
+        $items = $this->getJson('/api/v1/orders?status=unbilled&include_items=1')->assertOk()->json('data.0.items');
+        $this->assertCount(1, $items);
+        $this->assertSame('Mango', $items[0]['name']);
+        $this->assertEquals(2, $items[0]['quantity']);
+    }
+
     public function test_adding_an_item_reserves_stock_and_totals_recalculate(): void
     {
         $product = $this->product(price: 20, stock: 10);

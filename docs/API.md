@@ -66,7 +66,7 @@ Failure:
 
 | Method and path | Notes |
 | --- | --- |
-| `GET /orders` | `status`, `from`, `to`, `search` (number, name or mobile) |
+| `GET /orders` | `status`, `from`, `to`, `search` (number, name or mobile), `include_items` (adds each order's `items`) |
 | `POST /orders` | `customer_id?`, `customer_name?`, `customer_mobile?` |
 | `GET /orders/{id}` | With items |
 | `PATCH /orders/{id}` | Customer fields |

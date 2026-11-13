@@ -17,7 +17,7 @@ Two very quick taps on the same button (under 0.18 seconds) count as one, so an 
 
 ## Changing an open order
 
-Open **Orders to Be Billed** and tap the order. You can:
+**Orders to Be Billed** lists every open order with its items, for example `2 × Mango`, so you can tell apart two orders with the same total. Tap an order to change it. You can:
 
 - **Add items** to go back to the tiles, or use **+** and **−** on a line.
 - **Served**: mark an item as handed over. Stock is deducted now instead of at billing. This is optional, because billing deducts anything not yet marked.

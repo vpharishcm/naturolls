@@ -24,6 +24,10 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $q = Order::query()->with('invoice', 'creator')->latest('id');
+        // The Orders to Be Billed cards list what is in each order, so staff can tell orders of the same amount apart.
+        if ($request->boolean('include_items')) {
+            $q->with('items');
+        }
         if ($status = $request->query('status')) {
             $q->where('status', $status);
         }
