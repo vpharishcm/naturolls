@@ -110,15 +110,26 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Secrets pasted from Windows can carry stray spaces or CR characters; strip them.
+          trim() { printf '%s' "$1" | tr -d '[:space:]'; }
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          # Pin the server's keys under a fixed alias, so how the host was written in the secret cannot cause a mismatch.
+          # Each line is "host keytype key"; only the key type and key are kept.
+          printf '%s\n' "$SSH_KNOWN_HOSTS" | tr -d '\r' \
+            | awk '!/^#/ { for (i = 1; i < NF; i++) if ($i ~ /^(ssh-|ecdsa-)/) { print "naturolls-server", $i, $(i+1); break } }' \
+            > ~/.ssh/known_hosts
+          echo "Pinned $(wc -l < ~/.ssh/known_hosts) server key(s)."
           {
             echo "Host server"
-            echo "  HostName ${{ secrets.SSH_HOST }}"
-            echo "  Port ${{ secrets.SSH_PORT }}"
-            echo "  User ${{ secrets.SSH_USER }}"
+            echo "  HostName $(trim "$SSH_HOST")"
+            echo "  Port $(trim "$SSH_PORT")"
+            echo "  User $(trim "$SSH_USER")"
+            echo "  HostKeyAlias naturolls-server"
             echo "  IdentityFile ~/.ssh/deploy_key"
             echo "  IdentitiesOnly yes"
             echo "  StrictHostKeyChecking yes"
