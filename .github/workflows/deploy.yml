@@ -120,9 +120,21 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           # Pin the server's keys under a fixed alias, so how the host was written in the secret cannot cause a mismatch.
           # Each line is "host keytype key"; only the key type and key are kept.
+          if ! grep -q 'PRIVATE KEY-----' ~/.ssh/deploy_key; then
+            echo "::error::The SSH_PRIVATE_KEY secret is missing or incomplete. Paste the whole naturolls_deploy file, including the BEGIN and END lines."
+            exit 1
+          fi
+          # The live server's public host keys (not secret). SSH_KNOWN_HOSTS, if set, replaces them,
+          # for example after a move to a new server.
+          builtin_keys='naturolls-server ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAx80RqYlsM2Iw2UbOJ7irzDLC6NCcATyvV6J/Hkdzys
+          naturolls-server ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBKHCLDofjYYFwvpZQNdZlGK8A1XFizGANGZpmGP+eHuHISVPRFXjM6a+Oa9Ce763bsI4JD8w5LbMTqe6IrtwoQ0='
           printf '%s\n' "$SSH_KNOWN_HOSTS" | tr -d '\r' \
             | awk '!/^#/ { for (i = 1; i < NF; i++) if ($i ~ /^(ssh-|ecdsa-)/) { print "naturolls-server", $i, $(i+1); break } }' \
             > ~/.ssh/known_hosts
+          if [ ! -s ~/.ssh/known_hosts ]; then
+            printf '%s\n' "$builtin_keys" | sed 's/^ *//' > ~/.ssh/known_hosts
+            echo "Using the built-in server keys."
+          fi
           echo "Pinned $(wc -l < ~/.ssh/known_hosts) server key(s)."
           {
             echo "Host server"
