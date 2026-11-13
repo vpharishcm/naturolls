@@ -22,15 +22,15 @@ While the app is paused, new orders are saved on the device and sync when it ret
 
 The rules are in `.gitignore` at the top of the project.
 
-## 1. Check the server has rsync
+## 1. Check the server has tar
 
 In cPanel **Terminal**:
 
 ```bash
-which rsync
+which tar
 ```
 
-It should print a path. If it prints nothing, ask MilesWeb support to enable rsync.
+It should print a path. The deploy uploads files as one tar file over SSH, so rsync is not needed.
 
 ## 2. Create a deploy key
 

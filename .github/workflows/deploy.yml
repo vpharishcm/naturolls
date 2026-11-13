@@ -129,9 +129,14 @@ jobs:
         # A failed backup stops the deploy, so nothing changes without a fresh backup.
         run: ssh server "cd '$APP_DIR' && $PHP_BIN artisan backup:run && $PHP_BIN artisan down --retry=15"
 
+      # The server has no rsync, so files go up as one tar file, then replace the old ones in a single step.
       - name: Upload the server code
         # .env and storage (logs, backups, photos, sessions) stay as they are on the server.
-        run: rsync -az --delete --exclude '/.env' --exclude '/storage/' out/app/ "server:$APP_DIR/"
+        run: |
+          tar -czf - -C out/app . | ssh server "cat > ~/.naturolls_app_upload.tgz"
+          ssh server "cd '$APP_DIR' && test -f .env && \
+            find . -mindepth 1 -maxdepth 1 ! -name .env ! -name storage -exec rm -rf {} + && \
+            tar -xzf ~/.naturolls_app_upload.tgz && rm -f ~/.naturolls_app_upload.tgz"
 
       - name: Update the database and clear caches
         run: ssh server "cd '$APP_DIR' && $PHP_BIN artisan migrate --force && $PHP_BIN artisan optimize:clear"
@@ -141,9 +146,11 @@ jobs:
           # cPanel keeps the website's PHP version inside .htaccess; keep that part of the live file.
           ssh server "sed -n '/# php -- BEGIN cPanel-generated handler/,/# php -- END cPanel-generated handler/p' '$WEB_DIR/.htaccess' 2>/dev/null" > handler.txt || true
           if [ -s handler.txt ]; then cat handler.txt out/web/.htaccess > merged && mv merged out/web/.htaccess; fi
-          rsync -az --delete \
-            --exclude '/.well-known/' --exclude '/cgi-bin/' --exclude '/error_log' --exclude '/.user.ini' --exclude '/php.ini' \
-            out/web/ "server:$WEB_DIR/"
+          tar -czf - -C out/web . | ssh server "cat > ~/.naturolls_web_upload.tgz"
+          # Files cPanel manages in the web folder are kept.
+          ssh server "cd '$WEB_DIR' && test -f index.php && \
+            find . -mindepth 1 -maxdepth 1 ! -name .well-known ! -name cgi-bin ! -name error_log ! -name .user.ini ! -name php.ini -exec rm -rf {} + && \
+            tar -xzf ~/.naturolls_web_upload.tgz && rm -f ~/.naturolls_web_upload.tgz"
 
       - name: Resume the app
         if: always()
