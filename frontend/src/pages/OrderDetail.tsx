@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { MergeModal, MoveItemsModal } from '../components/MergeMoveModals';
 import { CustomerModal } from './OrderScreen';
 import { usePrint } from '../components/Receipt';
 import { BackLink, Badge, Button, Card, Chip, ErrorBanner, Field, inputClass, Loading, Modal, PinField, useBusy } from '../components/ui';
@@ -12,7 +13,7 @@ import type { Invoice, Order, OrderItem } from '../lib/types';
 import { uuid } from '../lib/uuid';
 import { useApp } from '../stores/app';
 
-const tone = { unbilled: 'low', billed: 'ok', cancelled: 'out' } as const;
+const tone = { unbilled: 'low', billed: 'ok', cancelled: 'out', merged: 'grey' } as const;
 
 export default function OrderDetail() {
   const { id } = useParams();
@@ -23,6 +24,9 @@ export default function OrderDetail() {
   const [cancelling, setCancelling] = useState(false);
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState<OrderItem | null>(null);
+  const [merging, setMerging] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const navigate = useNavigate();
   const { busy, error: actionError, run } = useBusy();
 
   if (isLoading) return <Loading />;
@@ -48,6 +52,7 @@ export default function OrderDetail() {
         <div className="text-base font-bold text-muted">{dateTime(order.created_at)}{order.created_by_name ? ` · ${order.created_by_name}` : ''}</div>
         <Badge tone={tone[order.status]}>{order.status[0].toUpperCase() + order.status.slice(1)}</Badge>
         {order.cancel_reason && <div className="mt-1 text-base font-bold text-muted">Reason: {order.cancel_reason}</div>}
+        {order.merged_into_id && <div className="mt-1 text-base font-bold text-muted">Items moved to <Link to={`/orders/${order.merged_into_id}`} className="font-black text-berry underline">{order.merged_into_number ?? 'another order'}</Link></div>}
       </div>
 
       <Card className="flex items-center justify-between gap-3">
@@ -88,6 +93,8 @@ export default function OrderDetail() {
         <div className="grid grid-cols-2 gap-2">
           <Link to={`/order/${order.id}`} className="flex min-h-[68px] items-center justify-center rounded-[20px] border-2 border-ink bg-white text-[20px] font-black">Add items</Link>
           <Link to={`/order/${order.id}?view=bill`} className="flex min-h-[68px] items-center justify-center rounded-[20px] bg-berry text-[20px] font-black text-white">BILL IT</Link>
+          <Button tone="plain" disabled={!order.items?.length} onClick={() => setMoving(true)}>Move items</Button>
+          <Button tone="plain" onClick={() => setMerging(true)}>Merge into another order</Button>
           <Button tone="danger" className="col-span-2" onClick={() => setCancelling(true)}>Cancel this order</Button>
         </div>
       )}
@@ -96,6 +103,19 @@ export default function OrderDetail() {
 
       {editing && <CustomerModal order={order} onClose={() => setEditing(false)} onSaved={set} />}
       {cancelling && <CancelModal order={order} onClose={() => setCancelling(false)} onDone={(o) => { set(o); setCancelling(false); qc.invalidateQueries({ queryKey: ['orders'] }); notify('Order cancelled.', 'ok'); }} />}
+      {merging && <MergeModal order={order} onClose={() => setMerging(false)} onDone={({ target }) => {
+        setMerging(false);
+        qc.invalidateQueries({ queryKey: ['orders'] });
+        notify(`Merged into ${target.order_number}.`, 'ok');
+        navigate(`/orders/${target.id}`);
+      }} />}
+      {moving && <MoveItemsModal order={order} onClose={() => setMoving(false)} onDone={({ source, target }) => {
+        setMoving(false);
+        qc.invalidateQueries({ queryKey: ['orders'] });
+        notify(`Moved to ${target.order_number}.`, 'ok');
+        if (source.status === 'merged') navigate(`/orders/${target.id}`);
+        else set(source);
+      }} />}
       {removing && <ServedModal order={order} item={removing} onClose={() => setRemoving(null)} onDone={(o) => { set(o); setRemoving(null); }} />}
     </div>
   );

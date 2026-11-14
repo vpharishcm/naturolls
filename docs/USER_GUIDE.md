@@ -22,7 +22,11 @@ Two very quick taps on the same button (under 0.18 seconds) count as one, so an 
 - **Add items** to go back to the tiles, or use **+** and **−** on a line.
 - **Served**: mark an item as handed over. Stock is deducted now instead of at billing. This is optional, because billing deducts anything not yet marked.
 - **Remove**: take an item off. If it was already served, stock stays deducted unless you choose to return it, which needs the owner PIN.
+- **Merge into another order**: for a second order opened by mistake for the same customer. Pick the customer's first order from the list, which shows each order's items. Everything moves across, same items join one line, and this order closes as **Merged** with a link to the order that took its items. An empty order opened by mistake can be merged away too.
+- **Move items**: to split an order, or fix an item added to the wrong one. Choose how many of each item to move, then send them to **A new order** or **Another open order**. At least one item must stay; to move everything, use Merge.
 - **Cancel this order**: needs a reason and the owner PIN. Unserved items go back to stock. Served items stay deducted.
+
+Merging and moving need no PIN and do not change stock: reserved items stay reserved and served items stay served, on whichever order they end up. Only unbilled orders can be merged or moved, and orders still saved on the device must sync first. Each merge and move is kept in **Settings › Audit**.
 
 ## Billing
 

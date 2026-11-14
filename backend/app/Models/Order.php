@@ -41,4 +41,10 @@ class Order extends Model
     {
         return $this->hasOne(Invoice::class);
     }
+
+    /** The order that took this order's items when it was merged. */
+    public function mergedInto()
+    {
+        return $this->belongsTo(Order::class, 'merged_into_id');
+    }
 }

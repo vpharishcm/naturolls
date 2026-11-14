@@ -3,27 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Badge, Card, Empty, ErrorBanner, inputClass, Loading, PageHeader } from '../components/ui';
 import { api } from '../lib/api';
-import { dateTime, itemLabel, qty, rupees } from '../lib/format';
+import { ItemChips } from '../components/ItemChips';
+import { dateTime, itemLabel, rupees } from '../lib/format';
 import { localStore, localTotal, type LocalOrder, type SyncNote } from '../lib/offline';
 import type { Order } from '../lib/types';
 import { useApp } from '../stores/app';
-
-/** What is in an order, so staff can tell apart orders with the same total. Same items at different prices are shown once. */
-function ItemChips({ items }: { items: { name: string; quantity: string | number }[] }) {
-  const merged = new Map<string, number>();
-  for (const i of items) merged.set(i.name, (merged.get(i.name) ?? 0) + Number(i.quantity));
-  const lines = [...merged].filter(([, n]) => n > 0);
-  if (!lines.length) return null;
-  return (
-    <ul aria-label="Items in this order" className="mt-2 flex flex-wrap gap-1.5">
-      {lines.map(([name, n]) => (
-        <li key={name} className="rounded-xl border border-line-soft bg-cream px-2.5 py-1 text-[16px] font-extrabold leading-tight">
-          <span className="text-berry">{qty(n)} ×</span> {name}
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 export default function OrdersToBill() {
   const online = useApp((s) => s.online);

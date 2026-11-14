@@ -76,6 +76,8 @@ Failure:
 | `POST /orders/{id}/items/{item}/serve` | `quantity?` (default all). Consumes stock. |
 | `POST /orders/{id}/items/{item}/resolve` | Retries reservation after a sync shortfall |
 | `POST /orders/{id}/cancel` | `reason`, *PIN*, permission order.cancel |
+| `POST /orders/{id}/move` | `items[]` of `{id, quantity}`, `target_order_id?` (omit for a new order), `expected_version?`. Moves items with their reserved stock and served counts; if nothing is left, this order closes as merged. Returns `source` and `target`. Refused with `nothing_left` when every item would go to a new order, `invalid_quantity`, `order_closed`, `order_changed`. |
+| `POST /orders/{id}/merge` | `target_order_id`, `expected_version?`. Moves every item to the target and closes this order with status `merged` and `merged_into_id`. Returns `source` and `target`. |
 | `POST /orders/sync` | Offline order: `client_uuid`, `order_number`, `created_at`, `customer_name?`, `customer_mobile?`, `items[]` of `{product_id, product_variant_id?, quantity, unit_price}`. Returns `order`, `duplicate`, `conflicts[]`. |
 
 ## Billing, invoices and printing

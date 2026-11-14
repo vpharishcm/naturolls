@@ -6,8 +6,8 @@ import { api } from '../lib/api';
 import { dateTime, itemLabel, rupees } from '../lib/format';
 import type { Order } from '../lib/types';
 
-const STATUSES = [{ id: '', label: 'All' }, { id: 'unbilled', label: 'Unbilled' }, { id: 'billed', label: 'Billed' }, { id: 'cancelled', label: 'Cancelled' }];
-export const statusTone = { unbilled: 'low', billed: 'ok', cancelled: 'out' } as const;
+const STATUSES = [{ id: '', label: 'All' }, { id: 'unbilled', label: 'Unbilled' }, { id: 'billed', label: 'Billed' }, { id: 'cancelled', label: 'Cancelled' }, { id: 'merged', label: 'Merged' }];
+export const statusTone = { unbilled: 'low', billed: 'ok', cancelled: 'out', merged: 'grey' } as const;
 
 export default function AllOrders() {
   const [status, setStatus] = useState('');

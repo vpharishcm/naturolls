@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\BusinessException;
 use App\Models\Customer;
+use App\Models\InventoryReservation;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -236,6 +237,175 @@ class OrderService
 
             return $order;
         }, self::ATTEMPTS);
+    }
+
+    /**
+     * Moves whole lines, or part of them, to another open order, or to a new order when no target is given.
+     * Stock does not change: reserved stock moves with the items, and served items stay served.
+     * If nothing is left on the source order, it is closed as merged into the target.
+     *
+     * @param  array<int, string>  $lines  order item id => quantity to move
+     * @return array{0: Order, 1: Order} the source and target orders
+     */
+    public function moveItems(Order $source, ?int $targetId, array $lines, User $user, ?int $expectedVersion = null): array
+    {
+        return DB::transaction(function () use ($source, $targetId, $lines, $user, $expectedVersion) {
+            if ($targetId === $source->id) {
+                throw new BusinessException('Choose a different order.', 'same_order');
+            }
+            $toNewOrder = $targetId === null;
+            $targetId ??= $this->create([], $user)->id;
+            [$source, $target] = $this->lockPair($source->id, $targetId, $expectedVersion);
+
+            $moved = $this->transfer($source, $target, $lines);
+            $this->touch($target);
+            if (! OrderItem::where('order_id', $source->id)->exists()) {
+                if ($toNewOrder) {
+                    // Everything to a brand-new order changes nothing but the number, so refuse (and roll back the new order).
+                    throw new BusinessException('Leave at least one item on this order. To move all of them to another order, use Merge.', 'nothing_left');
+                }
+                $this->closeAsMerged($source, $target);
+            } else {
+                $this->touch($source);
+            }
+            $this->audit->record($user, 'order.items_moved', $source, null, ['to' => $target->order_number, 'items' => $moved]);
+            $this->audit->activity($user, 'order.items_moved', "{$source->order_number} → {$target->order_number}");
+
+            return [$source->fresh(), $target->fresh()];
+        }, self::ATTEMPTS);
+    }
+
+    /** Moves every item to another open order and closes this one as merged. */
+    public function merge(Order $source, int $targetId, User $user, ?int $expectedVersion = null): array
+    {
+        return DB::transaction(function () use ($source, $targetId, $user, $expectedVersion) {
+            if ($targetId === $source->id) {
+                throw new BusinessException('Choose a different order.', 'same_order');
+            }
+            [$source, $target] = $this->lockPair($source->id, $targetId, $expectedVersion);
+
+            $lines = OrderItem::where('order_id', $source->id)->pluck('quantity', 'id')->map(fn ($q) => (string) $q)->all();
+            // An empty order can be merged too, which is the quick way to close one opened by mistake.
+            $moved = $lines ? $this->transfer($source, $target, $lines) : [];
+            if (! $target->customer_id && ! $target->customer_name && ($source->customer_id || $source->customer_name)) {
+                $target->fill($source->only(['customer_id', 'customer_name', 'customer_mobile']));
+            }
+            $this->touch($target);
+            $this->closeAsMerged($source, $target);
+            $this->audit->record($user, 'order.merged', $source, null, ['into' => $target->order_number, 'items' => $moved]);
+            $this->audit->activity($user, 'order.merged', "{$source->order_number} → {$target->order_number}");
+
+            return [$source->fresh(), $target->fresh()];
+        }, self::ATTEMPTS);
+    }
+
+    /** Locks both orders in id order, so two people moving between the same pair cannot deadlock. */
+    private function lockPair(int $sourceId, int $targetId, ?int $expectedVersion): array
+    {
+        $locked = [];
+        foreach ([min($sourceId, $targetId), max($sourceId, $targetId)] as $id) {
+            $locked[$id] = $this->lockOpen($id);
+        }
+        $source = $locked[$sourceId];
+        if ($expectedVersion !== null && (int) $source->version !== $expectedVersion) {
+            throw new BusinessException("Order {$source->order_number} was changed on another device. Check it and try again.", 'order_changed', 409);
+        }
+
+        return [$source, $locked[$targetId]];
+    }
+
+    /**
+     * Moves quantities line by line. A line moved whole to an order without the same item and price
+     * simply changes order. Otherwise it is split: reserved stock moves first, then any shortfall, then served items.
+     */
+    private function transfer(Order $source, Order $target, array $lines): array
+    {
+        if (! $lines) {
+            throw new BusinessException('Choose at least one item to move.', 'nothing_to_move');
+        }
+        $moved = [];
+        foreach ($lines as $itemId => $qty) {
+            $qty = number_format((float) $qty, 3, '.', '');
+            $item = OrderItem::where('order_id', $source->id)->whereKey($itemId)->lockForUpdate()->first();
+            if (! $item) {
+                throw new BusinessException('An item is no longer on this order. Check the order and try again.', 'order_changed', 409);
+            }
+            if (bccomp($qty, '0', 3) <= 0 || bccomp($qty, (string) $item->quantity, 3) > 0) {
+                throw new BusinessException("Choose between 1 and {$this->plain($item->quantity)} of {$item->product_name}.", 'invalid_quantity');
+            }
+            $moved[] = ['item' => $item->product_name, 'quantity' => $qty];
+
+            $match = OrderItem::where('order_id', $target->id)->where('stock_key', $item->stock_key)
+                ->where('unit_price', $item->unit_price)->lockForUpdate()->first();
+            $whole = bccomp($qty, (string) $item->quantity, 3) === 0;
+            if ($whole && ! $match) {
+                $item->update(['order_id' => $target->id]);
+
+                continue;
+            }
+
+            $reservation = InventoryReservation::where('order_item_id', $item->id)->lockForUpdate()->first();
+            $left = $qty;
+            $reserved = $this->smaller($left, (string) ($reservation->quantity ?? '0'));
+            $left = bcsub($left, $reserved, 3);
+            $short = $this->smaller($left, (string) $item->stock_shortfall);
+            $left = bcsub($left, $short, 3);
+            $served = $this->smaller($left, (string) $item->served_qty);
+
+            $dest = $match ?? tap($item->replicate(['order_id', 'quantity', 'served_qty', 'stock_shortfall', 'line_total', 'conflict_note']), function ($copy) use ($target) {
+                $copy->fill(['order_id' => $target->id, 'quantity' => 0, 'served_qty' => 0, 'stock_shortfall' => 0, 'line_total' => 0])->save();
+            });
+            $dest->quantity = bcadd((string) $dest->quantity, $qty, 3);
+            $dest->served_qty = bcadd((string) $dest->served_qty, $served, 3);
+            $dest->stock_shortfall = bcadd((string) $dest->stock_shortfall, $short, 3);
+            if (bccomp($short, '0', 3) > 0) {
+                $dest->conflict_note ??= $item->conflict_note;
+            }
+            $dest->line_total = Money::lineTotal((string) $dest->unit_price, (string) $dest->quantity);
+            $dest->save();
+
+            if (bccomp($reserved, '0', 3) > 0) {
+                $to = InventoryReservation::firstOrCreate(['order_item_id' => $dest->id], ['inventory_id' => $reservation->inventory_id, 'quantity' => 0]);
+                $to->update(['quantity' => bcadd((string) $to->quantity, $reserved, 3)]);
+                $reservation->update(['quantity' => bcsub((string) $reservation->quantity, $reserved, 3)]);
+            }
+
+            $item->quantity = bcsub((string) $item->quantity, $qty, 3);
+            $item->served_qty = bcsub((string) $item->served_qty, $served, 3);
+            $item->stock_shortfall = bcsub((string) $item->stock_shortfall, $short, 3);
+            if (bccomp((string) $item->stock_shortfall, '0', 3) === 0) {
+                $item->conflict_note = null;
+            }
+            $item->line_total = Money::lineTotal((string) $item->unit_price, (string) $item->quantity);
+            $item->save();
+            if (bccomp((string) $item->quantity, '0', 3) === 0) {
+                $reservation?->delete();
+                $item->delete();
+            }
+        }
+
+        return $moved;
+    }
+
+    private function closeAsMerged(Order $source, Order $target): void
+    {
+        $source->update([
+            'status' => 'merged',
+            'merged_into_id' => $target->id,
+            'item_count' => 0,
+            'subtotal' => 0,
+            'version' => $source->version + 1,
+        ]);
+    }
+
+    private function smaller(string $a, string $b): string
+    {
+        return bccomp($a, $b, 3) <= 0 ? $a : $b;
+    }
+
+    private function plain(string|float $qty): string
+    {
+        return rtrim(rtrim(number_format((float) $qty, 3, '.', ''), '0'), '.');
     }
 
     public function lockOpen(int $orderId): Order

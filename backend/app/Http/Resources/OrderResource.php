@@ -22,6 +22,8 @@ class OrderResource extends JsonResource
             'version' => $this->version,
             'created_offline' => $this->created_offline,
             'cancel_reason' => $this->cancel_reason,
+            'merged_into_id' => $this->merged_into_id,
+            'merged_into_number' => $this->whenLoaded('mergedInto', fn () => $this->mergedInto?->order_number),
             'created_at' => $this->created_at?->toIso8601String(),
             'billed_at' => $this->billed_at?->toIso8601String(),
             'cancelled_at' => $this->cancelled_at?->toIso8601String(),

@@ -45,6 +45,8 @@ Route::middleware(['auth:sanctum', 'idempotent'])->group(function () {
     Route::get('orders/{order}', [OrderController::class, 'show']);
     Route::patch('orders/{order}', [OrderController::class, 'update']);
     Route::post('orders/{order}/cancel', [OrderController::class, 'cancel']);
+    Route::post('orders/{order}/move', [OrderController::class, 'moveItems']);
+    Route::post('orders/{order}/merge', [OrderController::class, 'merge']);
     Route::post('orders/{order}/items', [OrderController::class, 'addItem']);
     Route::patch('orders/{order}/items/{item}', [OrderController::class, 'updateItem']);
     Route::delete('orders/{order}/items/{item}', [OrderController::class, 'removeItem']);

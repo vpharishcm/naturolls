@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AddOrderItemRequest;
 use App\Http\Requests\CancelOrderRequest;
+use App\Http\Requests\MergeOrderRequest;
+use App\Http\Requests\MoveOrderItemsRequest;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\SyncOrderRequest;
 use App\Http\Requests\UpdateOrderItemRequest;
@@ -114,6 +116,24 @@ class OrderController extends Controller
         return $this->ok($this->full($order));
     }
 
+    /** Moves items to another open order, or to a new one. Returns both orders. */
+    public function moveItems(MoveOrderItemsRequest $request, Order $order)
+    {
+        $lines = collect($request->items)->mapWithKeys(fn ($l) => [(int) $l['id'] => (string) $l['quantity']])->all();
+        $target = $request->filled('target_order_id') ? (int) $request->target_order_id : null;
+        [$source, $target] = $this->orders->moveItems($order, $target, $lines, $request->user(), $request->filled('expected_version') ? (int) $request->expected_version : null);
+
+        return $this->ok(['source' => $this->full($source), 'target' => $this->full($target)]);
+    }
+
+    /** Moves every item to another open order and closes this one as merged. Returns both orders. */
+    public function merge(MergeOrderRequest $request, Order $order)
+    {
+        [$source, $target] = $this->orders->merge($order, (int) $request->target_order_id, $request->user(), $request->filled('expected_version') ? (int) $request->expected_version : null);
+
+        return $this->ok(['source' => $this->full($source), 'target' => $this->full($target)]);
+    }
+
     public function sync(SyncOrderRequest $request, SyncService $sync)
     {
         $result = $sync->syncOrder($request->validated(), $request->user());
@@ -127,6 +147,6 @@ class OrderController extends Controller
 
     private function full(Order $order): array
     {
-        return (new OrderResource($order->fresh()->load('items', 'invoice', 'creator')))->resolve();
+        return (new OrderResource($order->fresh()->load('items', 'invoice', 'creator', 'mergedInto')))->resolve();
     }
 }

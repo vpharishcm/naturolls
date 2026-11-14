@@ -64,10 +64,12 @@ export interface Order {
   id: number;
   order_number: string;
   client_uuid: string | null;
-  status: 'unbilled' | 'billed' | 'cancelled';
+  status: 'unbilled' | 'billed' | 'cancelled' | 'merged';
   customer_id: number | null;
   customer_name: string | null;
   customer_mobile: string | null;
+  merged_into_id?: number | null;
+  merged_into_number?: string | null;
   item_count: string;
   subtotal: string;
   version: number;
