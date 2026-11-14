@@ -15,7 +15,7 @@ class ReceiptService
     {
         $invoice->loadMissing('payments');
         $s = $invoice->snapshot;
-        $discount = bcadd(bcadd((string) $invoice->promotion_discount, (string) $invoice->manual_discount, 2), (string) $invoice->loyalty_discount, 2);
+        $discount = bcadd(bcadd(bcadd((string) $invoice->promotion_discount, (string) $invoice->manual_discount, 2), (string) $invoice->loyalty_discount, 2), (string) $invoice->dice_discount, 2);
 
         return [
             'business' => [
@@ -37,6 +37,7 @@ class ReceiptService
             'items' => $s['items'],
             'subtotal' => $invoice->subtotal,
             'discount' => $discount,
+            'dice_prize' => $invoice->dice_prize,
             'taxable_amount' => $invoice->taxable_amount,
             'tax_amount' => $invoice->tax_amount,
             'tax_breakup' => $invoice->tax_breakup,
@@ -104,6 +105,10 @@ class ReceiptService
             $out .= $row('SGST @'.((float) $t['rate'] / 2).'%', $this->amount($t['sgst']));
         }
         $out .= $boldOn.$row('TOTAL', 'Rs '.$this->amount($r['total'])).$boldOff;
+        if (! empty($r['dice_prize'])) {
+            // Printers here have no rupee sign.
+            $out .= wordwrap('Dice: '.str_replace('₹', 'Rs ', $r['dice_prize']), $cols, "\n", true)."\n";
+        }
         foreach ($r['payments'] as $p) {
             if ((float) $p['change_given'] > 0) {
                 $given = $p['method'].' given '.$this->amount($p['tendered']);

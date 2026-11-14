@@ -19,7 +19,7 @@ class ReportService
         'Production' => ['production-daily' => 'Daily production', 'production-flavour' => 'Flavour-wise production', 'production-vs-sales' => 'Production versus sales'],
         'Staff' => ['staff-summary' => 'Orders and billing by staff', 'staff-activity' => 'Staff activity', 'staff-modifications' => 'Modifications', 'staff-cancellations' => 'Cancellations'],
         'Customers' => ['customer-spending' => 'Customer-wise spending', 'customer-repeat' => 'Repeat customers', 'customer-history' => 'Customer purchase history'],
-        'Loyalty and offers' => ['loyalty-summary' => 'Loyalty points', 'promotion-summary' => 'Promotion performance'],
+        'Loyalty and offers' => ['loyalty-summary' => 'Loyalty points', 'promotion-summary' => 'Promotion performance', 'dice-summary' => 'Roll the dice'],
     ];
 
     public function run(string $type, array $f): array
@@ -169,7 +169,7 @@ class ReportService
     private function financialSummary($from, $to): array
     {
         $i = DB::table('invoices')->whereBetween('issued_at', [$from, $to])
-            ->selectRaw('COALESCE(SUM(subtotal),0) gross, COALESCE(SUM(promotion_discount+manual_discount+loyalty_discount),0) discounts, COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(total),0) total, COALESCE(SUM(cost_total),0) cost')->first();
+            ->selectRaw('COALESCE(SUM(subtotal),0) gross, COALESCE(SUM(promotion_discount+manual_discount+loyalty_discount+dice_discount),0) discounts, COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(total),0) total, COALESCE(SUM(cost_total),0) cost')->first();
         $refunds = (float) DB::table('payments')->where('type', 'refund')->where('status', 'success')->whereBetween('created_at', [$from, $to])->sum('amount');
         $net = $i->total - $i->tax - $refunds;
         $rows = [
@@ -331,5 +331,33 @@ class ReportService
             ->selectRaw('p.name as promotion, COUNT(*) as uses, SUM(ip.discount) as discount, SUM(i.total) as revenue')->groupBy('p.id', 'p.name')->orderByDesc('uses')->get();
 
         return ['columns' => $this->cols(['promotion' => ['Offer'], 'uses' => ['Times used', 'number'], 'discount' => ['Discount given', 'money'], 'revenue' => ['Bill revenue', 'money']]), 'rows' => $rows];
+    }
+
+    /** Each prize won on the dice: how often, the rupees taken off, and free items at their menu price. */
+    private function diceSummary($from, $to): array
+    {
+        $freeValue = DB::table('order_items as oi')
+            ->leftJoin('product_variants as v', 'v.id', '=', 'oi.product_variant_id')
+            ->leftJoin('products as p', 'p.id', '=', 'oi.product_id')
+            ->whereNull('oi.deleted_at')->where('oi.unit_price', 0)->where('oi.product_name', 'like', '% (dice prize)')
+            ->groupBy('oi.order_id')
+            ->selectRaw('oi.order_id, SUM(oi.quantity * COALESCE(v.price, p.price, 0)) as value');
+        $bills = DB::table('invoices as i')->leftJoinSub($freeValue, 'f', 'f.order_id', '=', 'i.order_id')
+            ->whereNotNull('i.dice_prize')->whereBetween('i.issued_at', [$from, $to]);
+
+        $rows = (clone $bills)
+            ->selectRaw("TRIM(SUBSTRING_INDEX(i.dice_prize, ':', -1)) as prize, COUNT(*) as wins, SUM(i.dice_discount) as discount, COALESCE(SUM(f.value), 0) as free_value, SUM(i.total) as revenue")
+            ->groupBy('prize')->orderByDesc('wins')->get();
+        $rolledAgain = (clone $bills)->get(['i.dice_rolls'])->filter(fn ($r) => count(json_decode((string) $r->dice_rolls, true) ?: []) > 1)->count();
+
+        return [
+            'columns' => $this->cols(['prize' => ['Prize'], 'wins' => ['Times won', 'number'], 'discount' => ['Rupees off', 'money'], 'free_value' => ['Free items (menu price)', 'money'], 'revenue' => ['Bill revenue', 'money']]),
+            'rows' => $rows,
+            'summary' => [
+                ['label' => 'Bills that rolled', 'value' => $rows->sum('wins'), 'type' => 'number'],
+                ['label' => 'Rolled again at least once', 'value' => $rolledAgain, 'type' => 'number'],
+                ['label' => 'Cost of prizes', 'value' => $rows->sum('discount') + $rows->sum('free_value'), 'type' => 'money'],
+            ],
+        ];
     }
 }

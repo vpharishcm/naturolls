@@ -24,7 +24,7 @@ class PricingService
      * @param  Promotion|array<int, Promotion>|null  $promotions  applied in the order given
      * @param  array{type:string, value:string|float}|null  $manual
      */
-    public function calculate(array $lines, Promotion|array|null $promotions, ?array $manual, int $loyaltyPaise, bool $inclusive): array
+    public function calculate(array $lines, Promotion|array|null $promotions, ?array $manual, int $loyaltyPaise, bool $inclusive, int $dicePaise = 0): array
     {
         $gross = array_map(fn ($l) => Money::toPaise($l['line_total']), $lines);
         $subtotal = array_sum($gross);
@@ -33,6 +33,10 @@ class PricingService
         $promoPaise = min($subtotal, $applied['discount']);
         // A free item's value comes off the free items' lines, not the lines that earned it.
         $net = $this->subtract($gross, $applied['per_line']);
+
+        // Rupees off won on the dice, after offers and before any manual discount.
+        $dicePaise = min(max(0, $dicePaise), array_sum($net));
+        $net = $this->subtract($net, $this->allocate($dicePaise, $net));
 
         $manualPaise = 0;
         if ($manual) {
@@ -81,6 +85,7 @@ class PricingService
             'subtotal' => Money::fromPaise($subtotal),
             'promotion_discount' => Money::fromPaise($promoPaise),
             'manual_discount' => Money::fromPaise($manualPaise),
+            'dice_discount' => Money::fromPaise($dicePaise),
             'loyalty_discount' => Money::fromPaise($loyaltyPaise),
             'taxable_amount' => Money::fromPaise($taxable),
             'tax_amount' => Money::fromPaise($tax),

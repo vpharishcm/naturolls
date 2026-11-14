@@ -47,6 +47,7 @@ export function ReceiptPaper({ r }: { r: ReceiptData }) {
         </div>
       ))}
       <div className={row} style={{ fontWeight: 800, fontSize: '1.2em' }}><span>TOTAL</span><span>₹{receiptAmount(r.total)}</span></div>
+      {r.dice_prize && <div>Dice: {r.dice_prize}</div>}
       {r.payments.map((p, n) => (
         <div key={n}>
           {Number(p.change_given) > 0

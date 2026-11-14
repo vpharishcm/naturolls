@@ -247,7 +247,7 @@ function InvoicePanel({ invoiceId, items, orderKey }: { invoiceId: number; items
   const [editingBill, setEditingBill] = useState(false);
   const [editingPayment, setEditingPayment] = useState(false);
   if (!invoice) return null;
-  const discount = Number(invoice.promotion_discount) + Number(invoice.manual_discount) + Number(invoice.loyalty_discount);
+  const discount = Number(invoice.promotion_discount) + Number(invoice.manual_discount) + Number(invoice.loyalty_discount) + Number(invoice.dice_discount ?? 0);
   return (
     <Card className="flex flex-col gap-2">
       {portal}
@@ -260,6 +260,7 @@ function InvoicePanel({ invoiceId, items, orderKey }: { invoiceId: number; items
         <div className="flex justify-between"><span>Paid</span><span>{rupees(invoice.total)}</span></div>
         {Number(invoice.refunded_amount) > 0 && <div className="flex justify-between text-rust"><span>Refunded</span><span>{rupees(invoice.refunded_amount)}</span></div>}
       </div>
+      {invoice.dice_prize && <div className="text-[16px] font-extrabold text-berry">🎲 {invoice.dice_prize}{(invoice.dice_rolls?.length ?? 0) > 1 ? ` (rolled ${invoice.dice_rolls!.join(', ')})` : ''}</div>}
       {invoice.payments?.map((p) => (
         <div key={p.id} className="flex justify-between text-base font-bold text-muted">
           <span>{p.type === 'refund' ? 'Refund · ' : Number(p.amount) < 0 ? 'Given back · ' : ''}{p.method.toUpperCase()}{p.reference ? ` · ${p.reference}` : ''}</span>

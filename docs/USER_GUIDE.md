@@ -67,6 +67,29 @@ Create offers in **Settings › Offers**. Choose what each one covers: whole ord
 
 Every active offer that helps applies to the bill at once: with "2 Milk for ₹90" and "2 Water for ₹40", a bill with 2 Milk and 2 Water gets both. Each item counts towards one offer only, and when offers compete for the same items the bill uses the mix that saves the customer the most. Staff can tap offers under **Offers** on the bill screen to turn them on or off, choose **No offer**, or tap **Best offers** to go back to the automatic choice. Offers that need a manager's PIN are never applied automatically.
 
+## Roll the dice
+
+Bills over a set amount win a roll of a real dice, and the number decides the prize.
+
+**Setting it up (owner):** open **Settings › Offers** and press **+ New dice offer** under **🎲 Roll the dice**. It starts with the usual six prizes. Set the minimum bill (checked before discounts), the start and end dates, and for each number:
+
+- **Free item**: choose the items or categories that can be given free. If more than one, staff pick the one the customer wants.
+- **₹ off bill**: the rupees taken off.
+- **Roll again**: the customer rolls once more.
+- **No prize**: for example "Better luck next time".
+
+The wording you type is what staff see and what prints on the bill. Use **Turn off** to stop the offer early.
+
+**At the counter:**
+
+1. On the bill screen, a **🎲 Roll the dice** box appears when the bill qualifies. Under the minimum, it says how much more to add.
+2. The customer rolls the dice. Tap the number that came up.
+3. **Roll again**: ask them to roll once more and tap the new number, as many times as it comes up.
+4. **Free item**: tap the item they want. It is added to the bill at ₹0, so stock stays right. **₹ off** comes off the total straight away.
+5. Press **CONFIRM** as usual. You cannot confirm while a roll is unfinished. Tapped the wrong number? Press **Start again**.
+
+One roll per bill. The numbers rolled and the prize are saved on the bill, print on the receipt, and appear in **Reports › Roll the dice**, which shows how often each prize was won and what the prizes cost. Customers can skip the roll; just confirm without tapping a number.
+
 ## When the internet is down
 
 A black bar shows **Offline**. Keep taking new orders: they are saved on the device with numbers like `261101-TDK1-0001`, which you can give to the customer.

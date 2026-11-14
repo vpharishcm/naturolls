@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { DiceOffersSection } from '../components/DiceOffers';
 import { Badge, Button, Card, Chip, ErrorBanner, Field, inputClass, Loading, Modal, PageHeader, Pager, useBusy } from '../components/ui';
 import { api } from '../lib/api';
 import { dateTime, rupees } from '../lib/format';
@@ -233,6 +234,7 @@ function OffersTab() {
         </Card>
       ))}
       {editing && <PromoForm promo={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      <DiceOffersSection />
     </>
   );
 }

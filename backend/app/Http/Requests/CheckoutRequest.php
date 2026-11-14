@@ -20,6 +20,12 @@ class CheckoutRequest extends FormRequest
             'discount_reason' => ['nullable', 'string', 'max:255'],
             'manager_pin' => ['nullable', 'string', 'max:12'],
             'redeem_points' => ['nullable', 'integer', 'min:0'],
+            // Each number the customer rolled, in order; a free-item prize also names the item.
+            'dice' => ['nullable', 'array'],
+            'dice.rolls' => ['nullable', 'array', 'max:20'],
+            'dice.rolls.*' => ['integer', 'between:1,6'],
+            'dice.product_id' => ['nullable', 'integer'],
+            'dice.product_variant_id' => ['nullable', 'integer'],
             'payments' => ['present', 'array'],
             'payments.*.method' => ['required', 'in:cash,upi,card'],
             'payments.*.amount' => ['required', 'numeric', 'min:0', 'max:9999999'],

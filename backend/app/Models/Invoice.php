@@ -15,6 +15,8 @@ class Invoice extends Model
             'promotion_discount' => 'decimal:2',
             'manual_discount' => 'decimal:2',
             'loyalty_discount' => 'decimal:2',
+            'dice_discount' => 'decimal:2',
+            'dice_rolls' => 'array',
             'taxable_amount' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'total' => 'decimal:2',

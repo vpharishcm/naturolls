@@ -85,6 +85,7 @@ Failure:
 | Method and path | Notes |
 | --- | --- |
 | `POST /orders/{id}/bill/preview` | `promotion_ids?` (offers to use; omit for every automatic offer that helps), `promotion_id?` (older single-offer form), `no_promotion?`, `manual_discount?` (`{type, value}`), `redeem_points?`. Returns totals, tax, `promotions` (each applied offer and its saving), `available_promotions` and `version`. |
+| *Dice* | Preview and bill also take `dice` = `{rolls[], product_id?, product_variant_id?}`: every number rolled, in order, where all but the last are "roll again" faces; a free-item prize names the item. Preview returns `dice` (the running offer, `eligible`, and each face with its `choices`), `dice_discount` and `dice_prize`. Refused with `dice_not_running`, `dice_not_eligible` (under the minimum before discounts), `dice_roll_again`, `dice_invalid_roll`, `dice_choose_item`. A free prize joins the order at ₹0 with its stock deducted. |
 | `POST /orders/{id}/bill` | The above plus `expected_version`, `payments[]` of `{method, amount, tendered?, reference?}`, `discount_reason?`, *PIN* for discounts. Payments must equal the total. |
 | `GET /invoices`, `GET /invoices/{id}` | `search`, `customer_id` |
 | `GET /invoices/{id}/receipt` | Receipt data and `escpos_base64` |
@@ -143,7 +144,7 @@ Earning and redemption happen during `POST /orders/{id}/bill`.
 
 Permission reports.view. `GET /reports` lists them. `GET /reports/{type}` takes `from`, `to`, and returns `title`, `columns`, `rows`, `summary`. `GET /reports/{type}/export/{xlsx|csv|pdf}` downloads a file.
 
-Types: `sales-period` (`group`: day, week or month), `sales-product`, `sales-category`, `sales-hours`, `stock-current`, `stock-movements`, `stock-consumption`, `stock-wastage`, `stock-low`, `financial-summary`, `financial-payments`, `financial-refunds`, `financial-profit`, `production-daily`, `production-flavour`, `production-vs-sales`, `staff-summary`, `staff-activity`, `staff-modifications`, `staff-cancellations`, `customer-spending`, `customer-repeat`, `customer-history` (`customer_id`), `loyalty-summary`, `promotion-summary`.
+Types: `sales-period` (`group`: day, week or month), `sales-product`, `sales-category`, `sales-hours`, `stock-current`, `stock-movements`, `stock-consumption`, `stock-wastage`, `stock-low`, `financial-summary`, `financial-payments`, `financial-refunds`, `financial-profit`, `production-daily`, `production-flavour`, `production-vs-sales`, `staff-summary`, `staff-activity`, `staff-modifications`, `staff-cancellations`, `customer-spending`, `customer-repeat`, `customer-history` (`customer_id`), `loyalty-summary`, `promotion-summary`, `dice-summary`.
 
 ## Promotions, staff, settings and backups
 
@@ -151,6 +152,8 @@ Types: `sales-period` (`group`: day, week or month), `sales-product`, `sales-cat
 | --- | --- | --- |
 | `GET /promotions` | | |
 | `POST /promotions`, `PUT /promotions/{id}`, `DELETE /promotions/{id}` | promotions.manage | `name`, `discount_type` (`percent`, `fixed`, `buy_get`, `bundle`), `discount_value` (the set price for `bundle`, unused for `buy_get`), `buy_qty?`, `get_qty?`, `get_scope?` (`same`, `product`, `category`), `get_product_ids[]?`, `get_category_ids[]?`, `scope` (`order`, `product`, `category`), `min_purchase?`, `starts_at?`, `ends_at?`, `is_active?`, `requires_authorization?`, `product_ids[]?`, `category_ids[]?` |
+| `GET /dice-offers` | | |
+| `POST /dice-offers`, `PUT /dice-offers/{id}`, `DELETE /dice-offers/{id}` | promotions.manage | `name`, `min_bill`, `starts_on?`, `ends_on?`, `is_active?`, `faces` (exactly 6) of `{type: discount\|free_item\|reroll\|none, label?, amount?, product_ids?, category_ids?}` |
 | `GET /staff`, `POST /staff`, `PUT /staff/{id}` | staff.manage | `name`, `username`, `password`, `pin?`, `role_id`, `is_active?` |
 | `GET /audit-logs` | staff.manage | `action` prefix |
 | `GET /settings` | | |

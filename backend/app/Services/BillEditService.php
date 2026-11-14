@@ -142,6 +142,7 @@ class BillEditService
             'subtotal' => $totals['subtotal'],
             'promotion_discount' => $totals['promotion_discount'],
             'manual_discount' => $totals['manual_discount'],
+            'dice_discount' => $totals['dice_discount'],
             'loyalty_discount' => $totals['loyalty_discount'],
             'taxable_amount' => $totals['taxable_amount'],
             'tax_amount' => $totals['tax_amount'],
@@ -283,7 +284,8 @@ class BillEditService
             checkDates: false,
         );
         $manual = (float) $invoice->manual_discount > 0 ? ['type' => 'fixed', 'value' => $invoice->manual_discount] : null;
-        $totals = $this->pricing->calculate($lines, $promotions, $manual, Money::toPaise($invoice->loyalty_discount), (bool) $this->settings->get('tax.prices_inclusive'));
+        // A dice prize was won when the bill was paid, so its rupees off carry over like a manual discount.
+        $totals = $this->pricing->calculate($lines, $promotions, $manual, Money::toPaise($invoice->loyalty_discount), (bool) $this->settings->get('tax.prices_inclusive'), Money::toPaise($invoice->dice_discount));
         if (bccomp($totals['loyalty_discount'], (string) $invoice->loyalty_discount, 2) !== 0) {
             throw new BusinessException('The points used on this bill are worth more than the new total. Use Refund instead.', 'points_exceed_total');
         }

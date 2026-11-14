@@ -117,6 +117,12 @@ Route::middleware(['auth:sanctum', 'idempotent'])->group(function () {
         Route::put('promotions/{promotion}', [AdminController::class, 'updatePromotion']);
         Route::delete('promotions/{promotion}', [AdminController::class, 'destroyPromotion']);
     });
+    Route::get('dice-offers', [AdminController::class, 'diceOffers']);
+    Route::middleware('perm:promotions.manage')->group(function () {
+        Route::post('dice-offers', [AdminController::class, 'storeDiceOffer']);
+        Route::put('dice-offers/{diceOffer}', [AdminController::class, 'updateDiceOffer']);
+        Route::delete('dice-offers/{diceOffer}', [AdminController::class, 'destroyDiceOffer']);
+    });
 
     // Staff, settings, audit and backups
     Route::middleware('perm:staff.manage')->group(function () {

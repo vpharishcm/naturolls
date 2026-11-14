@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SaveDiceOfferRequest;
 use App\Http\Requests\SavePromotionRequest;
 use App\Http\Requests\SaveStaffRequest;
 use App\Models\AuditLog;
 use App\Models\BackupLog;
+use App\Models\DiceOffer;
 use App\Models\Promotion;
 use App\Models\Role;
 use App\Models\User;
@@ -34,6 +36,48 @@ class AdminController extends Controller
     public function updatePromotion(SavePromotionRequest $request, Promotion $promotion)
     {
         return $this->ok($this->savePromotion($promotion, $request));
+    }
+
+    public function diceOffers()
+    {
+        return $this->ok(DiceOffer::latest('id')->get());
+    }
+
+    public function storeDiceOffer(SaveDiceOfferRequest $request)
+    {
+        return $this->ok($this->saveDiceOffer(new DiceOffer, $request), [], 201);
+    }
+
+    public function updateDiceOffer(SaveDiceOfferRequest $request, DiceOffer $diceOffer)
+    {
+        return $this->ok($this->saveDiceOffer($diceOffer, $request));
+    }
+
+    public function destroyDiceOffer(Request $request, DiceOffer $diceOffer)
+    {
+        $diceOffer->update(['is_active' => false]);
+        $diceOffer->delete();
+        $this->audit->record($request->user(), 'dice_offer.deleted', $diceOffer);
+
+        return $this->ok();
+    }
+
+    private function saveDiceOffer(DiceOffer $offer, SaveDiceOfferRequest $request): DiceOffer
+    {
+        $data = $request->validated();
+        $before = $offer->exists ? $offer->only(['name', 'min_bill', 'starts_on', 'ends_on', 'is_active', 'faces']) : null;
+        // Keep only what each face type uses, so an old amount or item list cannot linger on a changed face.
+        $data['faces'] = array_map(fn ($f) => array_filter([
+            'type' => $f['type'],
+            'label' => trim((string) ($f['label'] ?? '')),
+            'amount' => $f['type'] === 'discount' ? number_format((float) $f['amount'], 2, '.', '') : null,
+            'product_ids' => $f['type'] === 'free_item' ? array_map('intval', $f['product_ids'] ?? []) : null,
+            'category_ids' => $f['type'] === 'free_item' ? array_map('intval', $f['category_ids'] ?? []) : null,
+        ], fn ($v) => $v !== null), array_values($data['faces']));
+        $offer->fill($data + ['is_active' => true])->save();
+        $this->audit->record($request->user(), $before ? 'dice_offer.updated' : 'dice_offer.created', $offer, $before, $offer->only(['name', 'min_bill', 'starts_on', 'ends_on', 'is_active', 'faces']));
+
+        return $offer;
     }
 
     public function destroyPromotion(Request $request, Promotion $promotion)

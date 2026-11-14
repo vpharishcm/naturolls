@@ -98,7 +98,35 @@ export interface BillPreview {
   promotion: { id: number; name: string } | null;
   promotions: { id: number; name: string; discount: string }[];
   available_promotions: { id: number; name: string; requires_authorization: boolean; discount: string }[];
+  dice_discount: string;
+  dice: DiceForBill | null;
+  dice_prize: string | null;
   version: number;
+}
+
+export type DiceFaceType = 'discount' | 'free_item' | 'reroll' | 'none';
+
+export interface DiceChoice { product_id: number; product_variant_id: number | null; name: string; price: string }
+
+/** The dice offer as the bill screen sees it: whether this bill qualifies, and each face. */
+export interface DiceForBill {
+  id: number;
+  name: string;
+  min_bill: string;
+  eligible: boolean;
+  faces: { number: number; type: DiceFaceType; label: string; amount: string | null; choices: DiceChoice[] }[];
+}
+
+export interface DiceFace { type: DiceFaceType; label?: string; amount?: string | number; product_ids?: number[]; category_ids?: number[] }
+
+export interface DiceOffer {
+  id: number;
+  name: string;
+  min_bill: string;
+  starts_on: string | null;
+  ends_on: string | null;
+  is_active: boolean;
+  faces: DiceFace[];
 }
 
 export interface Payment {
@@ -127,6 +155,9 @@ export interface Invoice {
   promotion_discount: string;
   manual_discount: string;
   loyalty_discount: string;
+  dice_discount?: string;
+  dice_rolls?: number[] | null;
+  dice_prize?: string | null;
   tax_amount: string;
   total: string;
   refunded_amount: string;
@@ -154,6 +185,7 @@ export interface ReceiptData {
   items: { name: string; quantity: string; unit_price: string; line_total: string }[];
   subtotal: string;
   discount: string;
+  dice_prize?: string | null;
   tax_breakup: TaxLine[];
   total: string;
   payments: { method: string; amount: string; tendered: string | null; reference: string | null; change_given: string }[];

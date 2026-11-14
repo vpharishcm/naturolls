@@ -24,6 +24,7 @@ class BillingService
         private SequenceService $sequences,
         private SettingsService $settings,
         private AuditService $audit,
+        private DiceService $dice,
     ) {}
 
     /** Totals for the given order and choices, using its latest saved items. */
@@ -33,20 +34,31 @@ class BillingService
         $lines = $this->lines($items);
         $promotions = $this->choosePromotions($input, $lines);
         $points = (int) ($input['redeem_points'] ?? 0);
+        $gross = $this->grossPaise($items);
+        $dice = $this->dice->resolve($input['dice'] ?? null, $gross);
         $totals = $this->pricing->calculate(
             $lines,
             $promotions,
             $input['manual_discount'] ?? null,
             $this->loyalty->pointsToPaise($points),
             (bool) $this->settings->get('tax.prices_inclusive'),
+            $dice['discount_paise'] ?? 0,
         );
 
         return $totals + [
             // The offer that saved the most, for screens that show one name.
             'promotion' => $this->biggest($totals['promotions']),
             'available_promotions' => $this->availablePromotions($lines),
+            'dice' => $this->dice->forBill($gross),
+            'dice_prize' => $dice['prize'] ?? null,
             'version' => $order->version,
         ];
+    }
+
+    /** The bill's value before any discount, which decides whether it can roll the dice. */
+    private function grossPaise($items): int
+    {
+        return (int) $items->sum(fn ($i) => Money::toPaise($i->line_total));
     }
 
     /**
@@ -77,6 +89,15 @@ class BillingService
                 throw new BusinessException('Some items are short of stock after syncing. Fix them before billing.', 'stock_shortfall', 409);
             }
 
+            // A free item won on the dice joins the order at no charge, so its stock is deducted like any other.
+            $dice = $this->dice->resolve($input['dice'] ?? null, $this->grossPaise($items));
+            if ($dice && $dice['product']) {
+                $prize = $this->orders->addItem($locked, $dice['product'], $dice['variant'], '1.000', $user, false, '0.00');
+                $prize->update(['product_name' => $prize->product_name.' (dice prize)']);
+                $locked->refresh();
+                $items = OrderItem::where('order_id', $locked->id)->orderBy('stock_key')->get();
+            }
+
             $lines = $this->lines($items);
             $promotions = $this->choosePromotions($input, $lines);
             $authorizerId = null;
@@ -102,7 +123,7 @@ class BillingService
             $customerId = $locked->customer_id;
             $this->loyalty->validateRedemption($customerId, $points);
 
-            $totals = $this->pricing->calculate($lines, $promotions, $manual, $this->loyalty->pointsToPaise($points), (bool) $this->settings->get('tax.prices_inclusive'));
+            $totals = $this->pricing->calculate($lines, $promotions, $manual, $this->loyalty->pointsToPaise($points), (bool) $this->settings->get('tax.prices_inclusive'), $dice['discount_paise'] ?? 0);
 
             $paid = 0;
             foreach ($input['payments'] ?? [] as $p) {
@@ -139,12 +160,16 @@ class BillingService
                 'subtotal' => $totals['subtotal'],
                 'promotion_discount' => $totals['promotion_discount'],
                 'manual_discount' => $totals['manual_discount'],
+                'dice_discount' => $totals['dice_discount'],
                 'loyalty_discount' => $totals['loyalty_discount'],
                 'taxable_amount' => $totals['taxable_amount'],
                 'tax_amount' => $totals['tax_amount'],
                 'total' => $totals['total'],
                 'cost_total' => Money::fromPaise($cost),
                 'promotion_id' => $this->biggest($totals['promotions'])['id'] ?? null,
+                'dice_offer_id' => $dice['offer']->id ?? null,
+                'dice_rolls' => $dice['rolls'] ?? null,
+                'dice_prize' => $dice['prize'] ?? null,
                 'discount_authorized_by' => $wasAuthorized ? $authorizerId : null,
                 'discount_reason' => $input['discount_reason'] ?? null,
                 'tax_breakup' => $totals['tax_breakup'],
@@ -196,7 +221,7 @@ class BillingService
                 'version' => $locked->version + 1,
             ]);
 
-            $this->audit->record($user, 'invoice.issued', $invoice, null, ['order' => $locked->order_number, 'total' => $totals['total']], $input['discount_reason'] ?? null, $authorizerId);
+            $this->audit->record($user, 'invoice.issued', $invoice, null, array_filter(['order' => $locked->order_number, 'total' => $totals['total'], 'dice' => $dice ? ['rolls' => $dice['rolls'], 'prize' => $dice['prize']] : null]), $input['discount_reason'] ?? null, $authorizerId);
             $this->audit->activity($user, 'order.billed', $invoice->invoice_number);
 
             return $invoice;
@@ -206,6 +231,8 @@ class BillingService
     public function lines($items, ?bool $taxed = null): array
     {
         $taxed ??= (bool) $this->settings->get('tax.enabled');
+        // Items given free (a dice prize) have nothing to discount or tax, and must not count towards offers.
+        $items = $items->filter(fn ($i) => bccomp((string) $i->unit_price, '0', 2) > 0);
         $products = Product::withTrashed()->whereIn('id', $items->pluck('product_id'))->get()->keyBy('id');
         $parents = Category::withTrashed()->pluck('parent_id', 'id');
 

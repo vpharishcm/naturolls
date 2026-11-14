@@ -69,11 +69,11 @@ abstract class TestCase extends BaseTestCase
     protected function bill(Order $order, array $overrides = [])
     {
         $order = $order->fresh();
-        $preview = $this->postJson("/api/v1/orders/{$order->id}/bill/preview", array_intersect_key($overrides, array_flip(['manual_discount', 'promotion_id', 'redeem_points'])))->json('data');
+        $preview = $this->postJson("/api/v1/orders/{$order->id}/bill/preview", array_intersect_key($overrides, array_flip(['manual_discount', 'promotion_id', 'redeem_points', 'dice'])))->json('data');
 
         return $this->postJson("/api/v1/orders/{$order->id}/bill", $overrides + [
             'expected_version' => $order->version,
-            'payments' => [['method' => 'cash', 'amount' => $preview['total']]],
+            'payments' => [['method' => 'cash', 'amount' => $preview['total'] ?? '0']],
         ]);
     }
 }

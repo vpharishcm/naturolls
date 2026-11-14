@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { DicePanel, dicePending, diceToSend, type DiceState } from '../components/DicePanel';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { EditPaymentModal } from '../components/EditPaymentModal';
 import { ProductArt } from '../components/ProductArt';
@@ -9,7 +10,7 @@ import { useCatalog } from '../hooks/useCatalog';
 import { useOrderDraft, type DraftLine } from '../hooks/useOrderDraft';
 import { api, ApiError } from '../lib/api';
 import { itemLabel, qty, rupees } from '../lib/format';
-import type { BillPreview, Customer, Invoice, Order, Product, Variant } from '../lib/types';
+import type { BillPreview, Customer, DiceForBill, Invoice, Order, Product, Variant } from '../lib/types';
 import { uuid } from '../lib/uuid';
 import { useApp } from '../stores/app';
 
@@ -313,6 +314,9 @@ function BillView({ draft, onBack, onPaid }: { draft: Draft; onBack: () => void;
   const [pin, setPin] = useState('');
   const [needPin, setNeedPin] = useState(false);
   const [freshOrder, setFreshOrder] = useState<Order | null>(null);
+  const [dice, setDice] = useState<DiceState>({ rolls: [], choice: null });
+  // The dice offer as last seen, so the panel stays put while a new roll is being priced.
+  const [diceInfo, setDiceInfo] = useState<DiceForBill | null>(null);
   const { busy, error, run, setError } = useBusy();
   // Stable across retries, so a lost reply can never produce a second bill.
   const [payKey] = useState(() => uuid());
@@ -323,13 +327,19 @@ function BillView({ draft, onBack, onPaid }: { draft: Draft; onBack: () => void;
     promotion_ids: Array.isArray(promotionIds) ? promotionIds : undefined,
     no_promotion: promotionIds === 'none' ? true : undefined,
     redeem_points: points || undefined,
-  }), [discount, promotionIds, points]);
+    dice: diceToSend(diceInfo, dice),
+  }), [discount, promotionIds, points, dice, diceInfo]);
 
   const preview = useQuery({
     queryKey: ['bill-preview', current?.id, current?.version, body],
-    queryFn: () => api.post<BillPreview>(`/orders/${current!.id}/bill/preview`, body),
+    queryFn: async () => {
+      const result = await api.post<BillPreview>(`/orders/${current!.id}/bill/preview`, body);
+      setDiceInfo(result.dice);
+      return result;
+    },
     enabled: Boolean(current) && online,
     retry: false,
+    placeholderData: keepPreviousData,
   });
   const customer = useQuery({
     queryKey: ['customer', current?.customer_id],
@@ -341,7 +351,9 @@ function BillView({ draft, onBack, onPaid }: { draft: Draft; onBack: () => void;
   const p = preview.data;
   const total = Number(p?.total ?? current.subtotal);
   const conflict = current.items?.some((i) => Number(i.stock_shortfall) > 0);
-  const discountTotal = p ? Number(p.promotion_discount) + Number(p.manual_discount) + Number(p.loyalty_discount) : 0;
+  const discountTotal = p ? Number(p.promotion_discount) + Number(p.manual_discount) + Number(p.loyalty_discount) + Number(p.dice_discount ?? 0) : 0;
+  const discountNames = [...(p?.promotions.map((o) => o.name) ?? []), ...(Number(p?.dice_discount ?? 0) > 0 ? ['Dice'] : [])];
+  const diceWaiting = dicePending(diceInfo, dice);
   const appliedIds = p?.promotions.map((o) => o.id) ?? [];
   const toggleOffer = (id: number) => {
     const next = appliedIds.includes(id) ? appliedIds.filter((x) => x !== id) : [...appliedIds, id];
@@ -412,7 +424,8 @@ function BillView({ draft, onBack, onPaid }: { draft: Draft; onBack: () => void;
 
         <div className="rounded-[18px] bg-white px-4 py-3 text-[17px] font-extrabold">
           <div className="flex justify-between"><span>Subtotal</span><span>{rupees(p?.subtotal ?? current.subtotal)}</span></div>
-          {discountTotal > 0 && <div className="flex justify-between text-mint"><span>Discount{p?.promotions.length ? ` · ${p.promotions.map((o) => o.name).join(', ')}` : ''}</span><span>−{rupees(discountTotal)}</span></div>}
+          {dice.choice && diceToSend(diceInfo, dice) && <div className="flex justify-between text-mint"><span>Free: {dice.choice.name} (dice prize)</span><span>{rupees(0)}</span></div>}
+          {discountTotal > 0 && <div className="flex justify-between text-mint"><span>Discount{discountNames.length ? ` · ${discountNames.join(', ')}` : ''}</span><span>−{rupees(discountTotal)}</span></div>}
           {p && Number(p.tax_amount) > 0 && <div className="flex justify-between text-muted"><span>GST {useApp.getState().settings['tax.prices_inclusive'] ? '(included)' : ''}</span><span>{rupees(p.tax_amount)}</span></div>}
         </div>
 
@@ -437,6 +450,7 @@ function BillView({ draft, onBack, onPaid }: { draft: Draft; onBack: () => void;
             </div>
           </div>
         )}
+        {diceInfo && <DicePanel dice={diceInfo} subtotal={Number(p?.subtotal ?? current.subtotal)} state={dice} onChange={setDice} />}
         {conflict && <div role="alert" className="rounded-2xl bg-rust-soft px-4 py-3 text-[17px] font-extrabold text-rust">Some items are short of stock. Go back and change them, or open the order in Orders to Be Billed.</div>}
         <ErrorBanner error={error} />
         {preview.error && <ErrorBanner error={preview.error} />}
@@ -471,8 +485,8 @@ function BillView({ draft, onBack, onPaid }: { draft: Draft; onBack: () => void;
         {!online ? (
           <div className="rounded-[20px] bg-sand px-4 py-5 text-center text-lg font-black">Billing needs a connection. This order is saved.</div>
         ) : (
-          <button type="button" onClick={confirm} disabled={busy || !p || conflict || !splitReady || cashShort} className="h-[72px] w-full rounded-[20px] bg-mint text-[22px] font-black text-white disabled:bg-line-strong">
-            {busy ? 'SAVING…' : `CONFIRM · ${rupees(total)}`}
+          <button type="button" onClick={confirm} disabled={busy || !p || preview.isFetching || conflict || !splitReady || cashShort || diceWaiting} className="h-[72px] w-full rounded-[20px] bg-mint text-[22px] font-black text-white disabled:bg-line-strong">
+            {busy ? 'SAVING…' : diceWaiting ? 'FINISH THE DICE ROLL FIRST' : `CONFIRM · ${rupees(total)}`}
           </button>
         )}
       </footer>
