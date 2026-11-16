@@ -30,7 +30,7 @@ export function ReceiptPaper({ r }: { r: ReceiptData }) {
         <span style={{ textAlign: 'right' }}>Amt</span>
         {r.items.map((i, n) => (
           <Fragment key={n}>
-            <span>{i.name}{i.category && <span style={{ display: 'block', paddingLeft: '2ch' }}>({i.category})</span>}</span>
+            <span>{i.name}{i.category ? ` | ${i.category}` : ''}</span>
             <span style={{ textAlign: 'right' }}>{plainNumber(i.unit_price)}</span>
             <span style={{ textAlign: 'right' }}>{plainNumber(i.quantity)}</span>
             <span style={{ textAlign: 'right' }}>{receiptAmount(i.line_total)}</span>

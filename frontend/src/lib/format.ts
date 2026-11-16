@@ -19,9 +19,9 @@ export function today(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** An item's name with its category, for places that hold plain text: "Strawberry (Water based)". */
+/** An item's name with its category, for places that hold plain text: "Strawberry | Water based". */
 export function withCategory(name: string, category?: string | null): string {
-  return category ? `${name} (${category})` : name;
+  return category ? `${name} | ${category}` : name;
 }
 
 export function itemLabel(count: number): string {

@@ -89,7 +89,7 @@ class ReportService
             ->where('o.status', 'billed')->whereNull('i.deleted_at')->whereBetween('o.billed_at', [$from, $to]);
     }
 
-    /** Adds each sold item's category (as c), so the same name in two categories stays two rows. */
+    /** Adds each sold item's category (as c), so the same name in two categories stays two rows, shown as "Strawberry | Water based". */
     private function withCategory($q)
     {
         return $q->leftJoin('products as p', 'p.id', '=', 'i.product_id')->leftJoin('categories as c', 'c.id', '=', 'p.category_id');
@@ -97,10 +97,10 @@ class ReportService
 
     private function salesProduct($from, $to): array
     {
-        $rows = $this->withCategory($this->soldItems($from, $to))->selectRaw('i.product_name as product, c.name as category, SUM(i.quantity) as quantity, SUM(i.line_total) as revenue')
+        $rows = $this->withCategory($this->soldItems($from, $to))->selectRaw("CONCAT_WS(' | ', i.product_name, c.name) as product, SUM(i.quantity) as quantity, SUM(i.line_total) as revenue")
             ->groupBy('i.product_name', 'c.name')->orderByDesc('revenue')->get();
 
-        return ['columns' => $this->cols(['product' => ['Product'], 'category' => ['Category'], 'quantity' => ['Quantity sold', 'qty'], 'revenue' => ['Revenue', 'money']]), 'rows' => $rows];
+        return ['columns' => $this->cols(['product' => ['Product'], 'quantity' => ['Quantity sold', 'qty'], 'revenue' => ['Revenue', 'money']]), 'rows' => $rows];
     }
 
     private function salesCategory($from, $to): array
@@ -125,18 +125,18 @@ class ReportService
         return DB::table('inventory as s')->join('products as p', 'p.id', '=', 's.product_id')
             ->leftJoin('product_variants as v', 'v.id', '=', 's.product_variant_id')->leftJoin('categories as c', 'c.id', '=', 'p.category_id')
             ->whereNull('p.deleted_at')->where('p.track_inventory', true)
-            ->selectRaw("CONCAT(p.name, COALESCE(CONCAT(' · ', v.name), '')) as product, c.name as category, s.opening_qty as opening, s.physical_qty as physical, s.reserved_qty as reserved, (s.physical_qty - s.reserved_qty) as available, p.min_stock as minimum")
+            ->selectRaw("CONCAT_WS(' | ', CONCAT(p.name, COALESCE(CONCAT(' · ', v.name), '')), c.name) as product, s.opening_qty as opening, s.physical_qty as physical, s.reserved_qty as reserved, (s.physical_qty - s.reserved_qty) as available, p.min_stock as minimum")
             ->orderBy('p.name')->orderBy('c.name');
     }
 
     private function stockCurrent(): array
     {
-        return ['columns' => $this->cols(['product' => ['Product'], 'category' => ['Category'], 'opening' => ['Opening', 'qty'], 'physical' => ['Physical', 'qty'], 'reserved' => ['Reserved', 'qty'], 'available' => ['Available', 'qty'], 'minimum' => ['Minimum', 'qty']]), 'rows' => $this->stockRows()->get()];
+        return ['columns' => $this->cols(['product' => ['Product'], 'opening' => ['Opening', 'qty'], 'physical' => ['Physical', 'qty'], 'reserved' => ['Reserved', 'qty'], 'available' => ['Available', 'qty'], 'minimum' => ['Minimum', 'qty']]), 'rows' => $this->stockRows()->get()];
     }
 
     private function stockLow(): array
     {
-        return ['columns' => $this->cols(['product' => ['Product'], 'category' => ['Category'], 'available' => ['Available', 'qty'], 'minimum' => ['Minimum', 'qty']]), 'rows' => $this->stockRows()->whereRaw('(s.physical_qty - s.reserved_qty) <= p.min_stock')->get()];
+        return ['columns' => $this->cols(['product' => ['Product'], 'available' => ['Available', 'qty'], 'minimum' => ['Minimum', 'qty']]), 'rows' => $this->stockRows()->whereRaw('(s.physical_qty - s.reserved_qty) <= p.min_stock')->get()];
     }
 
     private function movementQuery($from, $to)
@@ -149,27 +149,27 @@ class ReportService
     private function stockMovements($from, $to, $f): array
     {
         $rows = $this->movementQuery($from, $to)
-            ->selectRaw("m.created_at as time, p.name as product, c.name as category, m.type, m.physical_delta as physical_change, m.reserved_delta as reserved_change, m.physical_after, COALESCE(u.name, 'System') as staff, m.reason")
+            ->selectRaw("m.created_at as time, CONCAT_WS(' | ', p.name, c.name) as product, m.type, m.physical_delta as physical_change, m.reserved_delta as reserved_change, m.physical_after, COALESCE(u.name, 'System') as staff, m.reason")
             ->when($f['movement_type'] ?? null, fn ($q, $t) => $q->where('m.type', $t))
             ->orderByDesc('m.id')->limit(5000)->get();
 
-        return ['columns' => $this->cols(['time' => ['Time', 'datetime'], 'product' => ['Product'], 'category' => ['Category'], 'type' => ['Type'], 'physical_change' => ['Physical change', 'qty'], 'reserved_change' => ['Reserved change', 'qty'], 'physical_after' => ['Physical after', 'qty'], 'staff' => ['Staff'], 'reason' => ['Reason']]), 'rows' => $rows];
+        return ['columns' => $this->cols(['time' => ['Time', 'datetime'], 'product' => ['Product'], 'type' => ['Type'], 'physical_change' => ['Physical change', 'qty'], 'reserved_change' => ['Reserved change', 'qty'], 'physical_after' => ['Physical after', 'qty'], 'staff' => ['Staff'], 'reason' => ['Reason']]), 'rows' => $rows];
     }
 
     private function stockConsumption($from, $to): array
     {
         $rows = $this->movementQuery($from, $to)->where('m.type', 'consume')
-            ->selectRaw('p.name as product, c.name as category, ABS(SUM(m.physical_delta)) as consumed')->groupBy('p.id', 'p.name', 'c.name')->orderByDesc('consumed')->get();
+            ->selectRaw("CONCAT_WS(' | ', p.name, c.name) as product, ABS(SUM(m.physical_delta)) as consumed")->groupBy('p.id', 'p.name', 'c.name')->orderByDesc('consumed')->get();
 
-        return ['columns' => $this->cols(['product' => ['Product'], 'category' => ['Category'], 'consumed' => ['Consumed', 'qty']]), 'rows' => $rows];
+        return ['columns' => $this->cols(['product' => ['Product'], 'consumed' => ['Consumed', 'qty']]), 'rows' => $rows];
     }
 
     private function stockWastage($from, $to): array
     {
         $rows = $this->movementQuery($from, $to)->where('m.type', 'wastage')
-            ->selectRaw("m.created_at as time, p.name as product, c.name as category, ABS(m.physical_delta) as quantity, m.reason, COALESCE(u.name, 'System') as staff")->orderByDesc('m.id')->get();
+            ->selectRaw("m.created_at as time, CONCAT_WS(' | ', p.name, c.name) as product, ABS(m.physical_delta) as quantity, m.reason, COALESCE(u.name, 'System') as staff")->orderByDesc('m.id')->get();
 
-        return ['columns' => $this->cols(['time' => ['Time', 'datetime'], 'product' => ['Product'], 'category' => ['Category'], 'quantity' => ['Quantity', 'qty'], 'reason' => ['Reason'], 'staff' => ['Staff']]), 'rows' => $rows];
+        return ['columns' => $this->cols(['time' => ['Time', 'datetime'], 'product' => ['Product'], 'quantity' => ['Quantity', 'qty'], 'reason' => ['Reason'], 'staff' => ['Staff']]), 'rows' => $rows];
     }
 
     private function financialSummary($from, $to): array
@@ -212,10 +212,10 @@ class ReportService
     private function financialProfit($from, $to): array
     {
         $rows = $this->withCategory($this->soldItems($from, $to))->whereNotNull('i.unit_cost')
-            ->selectRaw('i.product_name as product, c.name as category, SUM(i.quantity) as quantity, SUM(i.line_total) as revenue, SUM(i.quantity * i.unit_cost) as cost, SUM(i.line_total - i.quantity * i.unit_cost) as profit')
+            ->selectRaw("CONCAT_WS(' | ', i.product_name, c.name) as product, SUM(i.quantity) as quantity, SUM(i.line_total) as revenue, SUM(i.quantity * i.unit_cost) as cost, SUM(i.line_total - i.quantity * i.unit_cost) as profit")
             ->groupBy('i.product_name', 'c.name')->orderByDesc('profit')->get();
 
-        return ['columns' => $this->cols(['product' => ['Product'], 'category' => ['Category'], 'quantity' => ['Quantity', 'qty'], 'revenue' => ['Revenue incl. tax', 'money'], 'cost' => ['Cost', 'money'], 'profit' => ['Estimated profit', 'money']]), 'rows' => $rows];
+        return ['columns' => $this->cols(['product' => ['Product'], 'quantity' => ['Quantity', 'qty'], 'revenue' => ['Revenue incl. tax', 'money'], 'cost' => ['Cost', 'money'], 'profit' => ['Estimated profit', 'money']]), 'rows' => $rows];
     }
 
     private function productionItems($from, $to)
@@ -235,9 +235,9 @@ class ReportService
 
     private function productionFlavour($from, $to): array
     {
-        $rows = $this->productionItems($from, $to)->selectRaw('p.name as flavour, c.name as category, SUM(i.quantity) as quantity')->groupBy('p.id', 'p.name', 'c.name')->orderByDesc('quantity')->get();
+        $rows = $this->productionItems($from, $to)->selectRaw("CONCAT_WS(' | ', p.name, c.name) as flavour, SUM(i.quantity) as quantity")->groupBy('p.id', 'p.name', 'c.name')->orderByDesc('quantity')->get();
 
-        return ['columns' => $this->cols(['flavour' => ['Flavour'], 'category' => ['Category'], 'quantity' => ['Quantity', 'qty']]), 'rows' => $rows];
+        return ['columns' => $this->cols(['flavour' => ['Flavour'], 'quantity' => ['Quantity', 'qty']]), 'rows' => $rows];
     }
 
     private function productionVsSales($from, $to): array
@@ -245,14 +245,13 @@ class ReportService
         $made = $this->productionItems($from, $to)->selectRaw('i.product_id, p.name, c.name as category, SUM(i.quantity) as qty')->groupBy('i.product_id', 'p.name', 'c.name')->get()->keyBy('product_id');
         $sold = $this->soldItems($from, $to)->selectRaw('i.product_id, SUM(i.quantity) as qty')->groupBy('i.product_id')->pluck('qty', 'product_id');
         $rows = $made->map(fn ($m) => [
-            'flavour' => $m->name,
-            'category' => $m->category,
+            'flavour' => $m->category ? "{$m->name} | {$m->category}" : $m->name,
             'produced' => $m->qty,
             'sold' => $sold[$m->product_id] ?? 0,
             'difference' => $m->qty - ($sold[$m->product_id] ?? 0),
         ])->values();
 
-        return ['columns' => $this->cols(['flavour' => ['Flavour'], 'category' => ['Category'], 'produced' => ['Produced', 'qty'], 'sold' => ['Sold', 'qty'], 'difference' => ['Difference', 'qty']]), 'rows' => $rows];
+        return ['columns' => $this->cols(['flavour' => ['Flavour'], 'produced' => ['Produced', 'qty'], 'sold' => ['Sold', 'qty'], 'difference' => ['Difference', 'qty']]), 'rows' => $rows];
     }
 
     private function staffSummary($from, $to): array

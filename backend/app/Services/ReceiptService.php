@@ -149,17 +149,16 @@ class ReceiptService
     }
 
     /**
-     * A heading, then one row per item: name, price, quantity, amount. A name too long for its column continues underneath,
-     * and the item's category goes on a line of its own, so Strawberry from two categories reads as two different items.
+     * A heading, then one row per item: name, price, quantity, amount. A name too long for its column continues underneath.
+     * The category follows the name ("Strawberry | Water based"), so Strawberry from two categories reads as two different items.
      */
     private function itemRows(array $items, int $cols): string
     {
         $rows = array_map(fn ($i) => [
-            $i['name'],
+            $i['name'].(empty($i['category']) ? '' : " | {$i['category']}"),
             $this->plain($i['quantity'], 3),
             $this->plain($i['unit_price'], 2),
             $this->amount($i['line_total']),
-            $i['category'] ?? '',
         ], $items);
         $qtyWidth = max(3, ...array_map(fn ($r) => mb_strlen($r[1]), $rows));
         $priceWidth = max(5, ...array_map(fn ($r) => mb_strlen($r[2]), $rows));
@@ -170,16 +169,11 @@ class ReceiptService
             .str_pad($price, $priceWidth, ' ', STR_PAD_LEFT).' '.str_pad($qty, $qtyWidth, ' ', STR_PAD_LEFT).' '.str_pad($amount, $amountWidth, ' ', STR_PAD_LEFT)."\n";
 
         $out = $format('Item', 'Qty', 'Price', 'Amt');
-        foreach ($rows as [$name, $qty, $price, $amount, $category]) {
+        foreach ($rows as [$name, $qty, $price, $amount]) {
             $lines = $this->wrap($name, $nameWidth);
             $out .= $format(array_shift($lines), $qty, $price, $amount);
             foreach ($lines as $line) {
                 $out .= $line."\n";
-            }
-            if ($category !== '') {
-                foreach ($this->wrap("({$category})", $cols - 2) as $line) {
-                    $out .= '  '.$line."\n";
-                }
             }
         }
 

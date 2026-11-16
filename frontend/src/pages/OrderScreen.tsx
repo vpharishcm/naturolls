@@ -233,8 +233,7 @@ function MenuView({ draft, onBill }: { draft: Draft; onBill: () => void }) {
             <div key={p.id} className="relative flex flex-col items-center gap-0.5 rounded-[20px] bg-white p-2 shadow-tile md:rounded-2xl md:p-1.5 port:p-2">
               <div className="absolute right-0.5 top-0.5 md:right-0 md:top-0">{heart}</div>
               <div className="flex h-20 items-center justify-center md:h-11 port:h-[60px]"><span className="md:hidden"><ProductArt product={p} /></span><span className="hidden md:block port:[&>*]:!h-[58px] port:[&>*]:!w-[58px]"><ProductArt product={p} size={42} /></span></div>
-              <div className="text-center text-[19px] font-black leading-tight md:text-[15px] port:text-[17px]">{p.name}</div>
-              {mixed && p.category_name && <div className="text-center text-[14px] font-extrabold leading-tight text-muted">{p.category_name}</div>}
+              <div className="text-center text-[19px] font-black leading-tight md:text-[15px] port:text-[17px]">{p.name}{mixed && <CategoryTag name={p.category_name} />}</div>
               <div className="flex flex-col items-center md:flex-row md:flex-wrap md:justify-center md:gap-x-1.5 md:text-[14px]">
                 <span className="text-lg font-extrabold text-muted md:text-[15px] port:text-[16px]">{rupees(p.price)}</span>
                 {stock}
