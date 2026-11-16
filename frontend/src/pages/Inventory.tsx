@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Badge, Button, Card, Chip, Empty, ErrorBanner, Field, inputClass, Loading, Modal, PageHeader, Pager, useBusy } from '../components/ui';
 import { api } from '../lib/api';
-import { dateTime, qty } from '../lib/format';
+import { dateTime, qty, withCategory } from '../lib/format';
 import { useApp } from '../stores/app';
 
 interface Row {
@@ -25,7 +25,7 @@ interface Movement {
   reason: string | null;
   created_at: string;
   user?: { name: string } | null;
-  inventory?: { product?: { name: string } };
+  inventory?: { product?: { name: string; category?: { name: string } | null } };
 }
 
 const TYPE_LABEL: Record<string, string> = { opening: 'Opening stock', reserve: 'Reserved', release: 'Released', consume: 'Consumed', production: 'Produced', production_reversal: 'Production reversed', correction: 'Stock count', wastage: 'Wastage', return: 'Returned', reconciliation: 'Reconciled' };
@@ -139,7 +139,7 @@ function History({ row }: { row: Row | null }) {
         <Card key={m.id}>
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="text-[18px] font-black">{TYPE_LABEL[m.type] ?? m.type}{!row && m.inventory?.product ? ` · ${m.inventory.product.name}` : ''}</div>
+              <div className="text-[18px] font-black">{TYPE_LABEL[m.type] ?? m.type}{!row && m.inventory?.product ? ` · ${withCategory(m.inventory.product.name, m.inventory.product.category?.name)}` : ''}</div>
               <div className="text-[15px] font-bold text-muted">{dateTime(m.created_at)} · {m.user?.name ?? 'System'}{m.reason ? ` · ${m.reason}` : ''}</div>
             </div>
             <div className="shrink-0 text-right text-[16px] font-extrabold">

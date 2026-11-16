@@ -88,10 +88,10 @@ class ReportController extends Controller
         $invoices = DB::table('invoices')->whereBetween('issued_at', $today)->selectRaw('COUNT(*) c, COALESCE(SUM(total),0) t, COALESCE(SUM(tax_amount),0) tax')->first();
         $unbilled = Order::where('status', 'unbilled')->selectRaw('COUNT(*) c, COALESCE(SUM(subtotal),0) t')->first();
 
-        $stock = DB::table('inventory as s')->join('products as p', 'p.id', '=', 's.product_id')
+        $stock = DB::table('inventory as s')->join('products as p', 'p.id', '=', 's.product_id')->leftJoin('categories as c', 'c.id', '=', 'p.category_id')
             ->where('p.track_inventory', true)->where('p.is_active', true)->whereNull('p.deleted_at')
             ->whereRaw('(s.physical_qty - s.reserved_qty) <= p.min_stock')
-            ->selectRaw('p.name, (s.physical_qty - s.reserved_qty) as available, p.min_stock')->orderBy('available')->get();
+            ->selectRaw('p.name, c.name as category, (s.physical_qty - s.reserved_qty) as available, p.min_stock')->orderBy('available')->get();
 
         return $this->ok([
             'total_sales' => number_format((float) $invoices->t, 2, '.', ''),

@@ -29,9 +29,16 @@ class OrderItem extends Model
         return $this->belongsTo(Order::class);
     }
 
+    /** Includes deleted products, so an old order still knows which category each item came from. */
     public function product()
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withTrashed();
+    }
+
+    /** The item's category, so items of the same name (Strawberry in two categories) can be told apart. */
+    public function categoryName(): ?string
+    {
+        return $this->product?->category?->name;
     }
 
     public function variant()

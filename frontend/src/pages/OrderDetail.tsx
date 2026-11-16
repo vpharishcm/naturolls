@@ -8,7 +8,8 @@ import { BackLink, Badge, Button, Card, Chip, ErrorBanner, Field, inputClass, Lo
 import { EditPaymentModal } from '../components/EditPaymentModal';
 import { useCatalog } from '../hooks/useCatalog';
 import { api } from '../lib/api';
-import { dateTime, qty, rupees } from '../lib/format';
+import { dateTime, qty, rupees, withCategory } from '../lib/format';
+import { CategoryTag } from '../components/CategoryTag';
 import type { Invoice, Order, OrderItem } from '../lib/types';
 import { uuid } from '../lib/uuid';
 import { useApp } from '../stores/app';
@@ -68,7 +69,7 @@ export default function OrderDetail() {
           <Card key={item.id} className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[20px] font-black">{item.name}</div>
+                <div className="text-[20px] font-black">{item.name}<CategoryTag name={item.category_name} /></div>
                 <div className="text-base font-bold text-muted">{qty(item.quantity)} × {rupees(item.unit_price)}{Number(item.served_qty) > 0 ? ` · ${qty(item.served_qty)} served` : ''}</div>
               </div>
               <div className="text-2xl font-black">{rupees(item.line_total)}</div>
@@ -153,13 +154,13 @@ function ServedModal({ order, item, onClose, onDone }: { order: Order; item: Ord
   );
 }
 
-interface EditLine { key: string; id?: number; product_id: number; product_variant_id?: number; name: string; price: string; quantity: number }
+interface EditLine { key: string; id?: number; product_id: number; product_variant_id?: number; name: string; category?: string | null; price: string; quantity: number }
 interface EditPreview { total: string; previous_total: string; difference: string; changed: boolean }
 
 /** Corrects a finished bill. The server works out the new total, so discounts and points stay exact. */
 function EditBillModal({ invoice, items, onClose, onDone }: { invoice: Invoice; items: OrderItem[]; onClose: () => void; onDone: () => void }) {
   const { products } = useCatalog();
-  const [lines, setLines] = useState<EditLine[]>(() => items.map((i) => ({ key: `i${i.id}`, id: i.id, product_id: i.product_id, name: i.name, price: i.unit_price, quantity: Number(i.quantity) })));
+  const [lines, setLines] = useState<EditLine[]>(() => items.map((i) => ({ key: `i${i.id}`, id: i.id, product_id: i.product_id, name: i.name, category: i.category_name, price: i.unit_price, quantity: Number(i.quantity) })));
   const [reason, setReason] = useState('');
   const [method, setMethod] = useState('cash');
   const [restock, setRestock] = useState(true);
@@ -186,7 +187,7 @@ function EditBillModal({ invoice, items, onClose, onDone }: { invoice: Invoice; 
     const key = `n${pid}-${vid ?? 0}`;
     setLines((v) => (v.some((l) => l.key === key)
       ? v.map((l) => (l.key === key ? { ...l, quantity: l.quantity + 1 } : l))
-      : [...v, { key, product_id: pid, product_variant_id: variant?.id, name: variant ? `${product.name} · ${variant.name}` : product.name, price: variant?.price ?? product.price, quantity: 1 }]));
+      : [...v, { key, product_id: pid, product_variant_id: variant?.id, name: variant ? `${product.name} · ${variant.name}` : product.name, category: product.category_name, price: variant?.price ?? product.price, quantity: 1 }]));
   };
   const save = () => run(async () => {
     await api.post(`/invoices/${invoice.id}/edit`, { ...body, reason, return_to_stock: restock, settlement_method: difference !== 0 ? method : undefined }, saveKey);
@@ -202,7 +203,7 @@ function EditBillModal({ invoice, items, onClose, onDone }: { invoice: Invoice; 
       {lines.map((l) => (
         <div key={l.key} className="flex items-center justify-between gap-2 rounded-2xl bg-white px-3 py-2">
           <div className="min-w-0">
-            <div className={`text-[18px] font-black ${l.quantity === 0 ? 'text-muted line-through' : ''}`}>{l.name}</div>
+            <div className={`text-[18px] font-black ${l.quantity === 0 ? 'text-muted line-through' : ''}`}>{l.name}<CategoryTag name={l.category} /></div>
             <div className="text-base font-bold text-muted">{rupees(l.price)} × {l.quantity}</div>
           </div>
           <div className="flex shrink-0 gap-2">
@@ -215,8 +216,8 @@ function EditBillModal({ invoice, items, onClose, onDone }: { invoice: Invoice; 
         <select className={inputClass} value="" onChange={(e) => add(e.target.value)}>
           <option value="">Choose an item</option>
           {products.filter((p) => p.is_active).flatMap((p) => (p.variants?.length
-            ? p.variants.filter((x) => x.is_active).map((x) => <option key={`${p.id}:${x.id}`} value={`${p.id}:${x.id}`}>{p.name} · {x.name} · {rupees(x.price)}</option>)
-            : [<option key={p.id} value={String(p.id)}>{p.name} · {rupees(p.price)}</option>]))}
+            ? p.variants.filter((x) => x.is_active).map((x) => <option key={`${p.id}:${x.id}`} value={`${p.id}:${x.id}`}>{withCategory(`${p.name} · ${x.name}`, p.category_name)} · {rupees(x.price)}</option>)
+            : [<option key={p.id} value={String(p.id)}>{withCategory(p.name, p.category_name)} · {rupees(p.price)}</option>]))}
         </select>
       </Field>
       {preview.data && (

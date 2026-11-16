@@ -4,6 +4,7 @@ import { ItemChips } from './ItemChips';
 import { Button, Chip, Empty, ErrorBanner, Loading, Modal, useBusy } from './ui';
 import { api } from '../lib/api';
 import { dateTime, itemLabel, qty, rupees } from '../lib/format';
+import { CategoryTag } from './CategoryTag';
 import type { Order } from '../lib/types';
 import { uuid } from '../lib/uuid';
 
@@ -99,7 +100,7 @@ export function MoveItemsModal({ order, onClose, onDone }: { order: Order; onClo
         return (
           <div key={i.id} className={`flex items-center justify-between gap-2 rounded-2xl bg-white px-3 py-2 ${n > 0 ? 'border-[3px] border-berry' : 'border-2 border-transparent'}`}>
             <div className="min-w-0">
-              <div className="text-[18px] font-black">{i.name}</div>
+              <div className="text-[18px] font-black">{i.name}<CategoryTag name={i.category_name} /></div>
               <div className="text-base font-bold text-muted">Move <span className="text-berry">{qty(n)}</span> of {qty(max)} · {rupees(i.unit_price)} each</div>
             </div>
             <div className="flex shrink-0 gap-2">

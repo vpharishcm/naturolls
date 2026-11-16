@@ -112,14 +112,14 @@ class DiceService
     public function choices(array $face): array
     {
         $categoryIds = $this->withChildren(array_map('intval', $face['category_ids'] ?? []));
-        $products = Product::with(['variants' => fn ($q) => $q->where('is_active', true)])
+        $products = Product::with(['category', 'variants' => fn ($q) => $q->where('is_active', true)])
             ->where('is_active', true)
             ->where(fn ($q) => $q->whereIn('id', array_map('intval', $face['product_ids'] ?? []))->orWhereIn('category_id', $categoryIds))
             ->orderBy('name')->get();
 
         return $products->flatMap(fn (Product $p) => $p->variants->isNotEmpty()
-            ? $p->variants->map(fn ($v) => ['product_id' => $p->id, 'product_variant_id' => $v->id, 'name' => "{$p->name} · {$v->name}", 'price' => (string) $v->price])
-            : [['product_id' => $p->id, 'product_variant_id' => null, 'name' => $p->name, 'price' => (string) $p->price]]
+            ? $p->variants->map(fn ($v) => ['product_id' => $p->id, 'product_variant_id' => $v->id, 'name' => "{$p->name} · {$v->name}", 'category_name' => $p->category?->name, 'price' => (string) $v->price])
+            : [['product_id' => $p->id, 'product_variant_id' => null, 'name' => $p->name, 'category_name' => $p->category?->name, 'price' => (string) $p->price]]
         )->values()->all();
     }
 

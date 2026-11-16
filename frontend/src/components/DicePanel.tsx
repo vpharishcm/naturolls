@@ -1,4 +1,5 @@
 import { rupees } from '../lib/format';
+import { CategoryTag } from './CategoryTag';
 import type { DiceChoice, DiceForBill } from '../lib/types';
 
 /** Dice faces drawn with their pips, so staff match what is on the real dice at a glance. */
@@ -94,7 +95,7 @@ export function DicePanel({ dice, subtotal, state, onChange }: { dice: DiceForBi
                   return (
                     <button key={`${c.product_id}-${c.product_variant_id ?? 0}`} type="button" aria-pressed={on} onClick={() => onChange({ ...state, choice: c })}
                       className={`min-h-[52px] rounded-2xl px-3 text-base font-black ${on ? 'border-[3px] border-mint bg-mint-soft' : 'border-2 border-line bg-white'}`}>
-                      {c.name}
+                      {c.name}<CategoryTag name={c.category_name} />
                     </button>
                   );
                 })}

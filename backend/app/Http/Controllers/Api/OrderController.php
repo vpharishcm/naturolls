@@ -28,7 +28,7 @@ class OrderController extends Controller
         $q = Order::query()->with('invoice', 'creator')->latest('id');
         // The Orders to Be Billed cards list what is in each order, so staff can tell orders of the same amount apart.
         if ($request->boolean('include_items')) {
-            $q->with('items');
+            $q->with('items.product.category');
         }
         if ($status = $request->query('status')) {
             $q->where('status', $status);
@@ -147,6 +147,6 @@ class OrderController extends Controller
 
     private function full(Order $order): array
     {
-        return (new OrderResource($order->fresh()->load('items', 'invoice', 'creator', 'mergedInto')))->resolve();
+        return (new OrderResource($order->fresh()->load('items.product.category', 'invoice', 'creator', 'mergedInto')))->resolve();
     }
 }

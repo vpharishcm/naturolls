@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Badge, Button, Chip, Empty, ErrorBanner, Field, inputClass, Loading, Modal, PageHeader, useBusy } from '../components/ui';
 import { api } from '../lib/api';
 import { qty, rupees } from '../lib/format';
+import { CategoryTag } from '../components/CategoryTag';
 import type { Category, Product } from '../lib/types';
 import { useApp } from '../stores/app';
 
@@ -75,7 +76,7 @@ export default function Products() {
             <div key={p.id} className="flex flex-col gap-2.5 rounded-[20px] bg-white px-3.5 py-3 shadow-tile">
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div className="min-w-0">
-                  <Link to={`/products/${p.id}`} className="text-[20px] font-black leading-tight underline decoration-line underline-offset-4">{p.name}</Link>
+                  <Link to={`/products/${p.id}`} className="text-[20px] font-black leading-tight underline decoration-line underline-offset-4">{p.name}</Link>{term && <CategoryTag name={p.category_name} />}
                   <div className="text-[15px] font-bold text-muted">
                     {p.track_inventory ? `${qty(available)} available` : 'Stock not tracked'}
                     {!p.is_active && <> · <Badge tone="grey">Hidden from billing</Badge></>}

@@ -37,7 +37,7 @@ class InventoryController extends Controller
 
     public function movements(Request $request)
     {
-        $q = InventoryMovement::with('inventory.product', 'inventory.variant', 'user:id,name')->latest('id');
+        $q = InventoryMovement::with('inventory.product.category', 'inventory.variant', 'user:id,name')->latest('id');
         if ($id = $request->query('inventory_id')) {
             $q->where('inventory_id', $id);
         }

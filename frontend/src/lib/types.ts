@@ -51,6 +51,7 @@ export interface OrderItem {
   product_variant_id: number | null;
   stock_key: string;
   name: string;
+  category_name?: string | null;
   unit_price: string;
   gst_rate: string;
   quantity: string;
@@ -106,7 +107,7 @@ export interface BillPreview {
 
 export type DiceFaceType = 'discount' | 'free_item' | 'reroll' | 'none';
 
-export interface DiceChoice { product_id: number; product_variant_id: number | null; name: string; price: string }
+export interface DiceChoice { product_id: number; product_variant_id: number | null; name: string; category_name?: string | null; price: string }
 
 /** The dice offer as the bill screen sees it: whether this bill qualifies, and each face. */
 export interface DiceForBill {
@@ -150,7 +151,7 @@ export interface Invoice {
   order_id: number;
   order_number: string;
   customer_name: string | null;
-  items: { name: string; quantity: string; unit_price: string; line_total: string }[];
+  items: { name: string; category?: string | null; quantity: string; unit_price: string; line_total: string }[];
   subtotal: string;
   promotion_discount: string;
   manual_discount: string;
@@ -182,7 +183,7 @@ export interface ReceiptData {
   order_number: string;
   customer_name: string | null;
   issued_at: string;
-  items: { name: string; quantity: string; unit_price: string; line_total: string }[];
+  items: { name: string; category?: string | null; quantity: string; unit_price: string; line_total: string }[];
   subtotal: string;
   discount: string;
   dice_prize?: string | null;

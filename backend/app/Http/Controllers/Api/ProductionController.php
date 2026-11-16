@@ -16,7 +16,7 @@ class ProductionController extends Controller
 
     public function index(Request $request)
     {
-        $q = ProductionBatch::with('items.product:id,name', 'user:id,name')->orderByDesc('production_date')->orderByDesc('id');
+        $q = ProductionBatch::with('items.product:id,name,category_id', 'items.product.category:id,name', 'user:id,name')->orderByDesc('production_date')->orderByDesc('id');
         if ($from = $request->query('from')) {
             $q->where('production_date', '>=', $from);
         }

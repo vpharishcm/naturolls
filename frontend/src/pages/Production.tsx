@@ -3,12 +3,13 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import { ProductArt } from '../components/ProductArt';
 import { Badge, Button, Card, Chip, Empty, ErrorBanner, Field, inputClass, Loading, Modal, PageHeader, Pager, PinField, useBusy } from '../components/ui';
 import { api } from '../lib/api';
-import { qty, today } from '../lib/format';
+import { qty, today, withCategory } from '../lib/format';
+import { CategoryTag } from '../components/CategoryTag';
 import type { Category, Product } from '../lib/types';
 import { uuid } from '../lib/uuid';
 import { useApp } from '../stores/app';
 
-interface BatchItem { id: number; quantity: string; reversed_at: string | null; reversal_reason: string | null; product?: { name: string } }
+interface BatchItem { id: number; quantity: string; reversed_at: string | null; reversal_reason: string | null; product?: { name: string; category?: { name: string } | null } }
 interface Batch { id: number; production_date: string; production_time: string; notes: string | null; user?: { name: string }; items: BatchItem[] }
 
 export default function Production() {
@@ -77,7 +78,7 @@ function Entry({ onSaved }: { onSaved: () => void }) {
           <Card key={p.id} className="flex items-center gap-2.5">
             <ProductArt product={p} size={48} />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[18px] font-black leading-tight">{p.name}</div>
+              <div className="truncate text-[18px] font-black leading-tight">{p.name}<CategoryTag name={p.category_name} /></div>
               <div className="text-[15px] font-bold text-muted">{qty(p.available_qty)} available</div>
             </div>
             <button type="button" aria-label={`10 fewer ${p.name}`} onClick={() => setCounts({ ...counts, [p.id]: String(Math.max(0, value - 10)) })} className="h-[52px] w-[44px] shrink-0 rounded-2xl bg-sand text-[22px] font-black">−</button>
@@ -117,7 +118,7 @@ function History() {
           <div className="text-[15px] font-bold text-muted">{b.user?.name}</div>
           {b.items.map((i) => (
             <div key={i.id} className="flex items-center justify-between gap-2">
-              <div className={`min-w-0 text-[18px] font-extrabold ${i.reversed_at ? 'text-muted line-through' : ''}`}>{i.product?.name} · {qty(i.quantity)}</div>
+              <div className={`min-w-0 text-[18px] font-extrabold ${i.reversed_at ? 'text-muted line-through' : ''}`}>{i.product?.name}<CategoryTag name={i.product?.category?.name} /> · {qty(i.quantity)}</div>
               {i.reversed_at ? <Badge tone="grey">Reversed</Badge> : <Button tone="plain" onClick={() => setFixing(i)}>Fix</Button>}
             </div>
           ))}
@@ -143,7 +144,7 @@ function FixModal({ item, onClose }: { item: BatchItem; onClose: () => void }) {
     onClose();
   });
   return (
-    <Modal title={`Fix ${item.product?.name}`} onClose={onClose}>
+    <Modal title={`Fix ${withCategory(item.product?.name ?? '', item.product?.category?.name)}`} onClose={onClose}>
       <ErrorBanner error={error} />
       <Field label="Correct quantity"><input className={inputClass} inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></Field>
       <Field label="Reason"><input className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>

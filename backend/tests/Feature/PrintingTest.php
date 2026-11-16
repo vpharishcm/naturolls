@@ -65,6 +65,9 @@ class PrintingTest extends TestCase
             $this->assertStringContainsString($width === 80 ? $order->order_number : str_replace('-', '', $order->order_number), $numbers);
             $this->assertMatchesRegularExpression('/^Item\s+Price\s+Qty\s+Amt$/', collect($lines)->first(fn ($l) => str_starts_with($l, 'Item')));
             $this->assertMatchesRegularExpression('/^Mango\s+20\s+2\s+40\.0$/', collect($lines)->first(fn ($l) => str_starts_with($l, 'Mango')));
+            // The category sits on its own line under the item, so same-named items from two categories differ.
+            $mangoAt = collect($lines)->search(fn ($l) => str_starts_with($l, 'Mango'));
+            $this->assertMatchesRegularExpression('/^  \(.+\)$/', $lines[$mangoAt + 1]);
             $this->assertMatchesRegularExpression('/\s12\.5\s+1\s+12\.5$/', collect($lines)->first(fn ($l) => str_starts_with($l, 'Very')));
             $this->assertStringContainsString('Popsicle', implode(' ', $lines));
         }

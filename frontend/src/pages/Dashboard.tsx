@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Button, Card, ErrorBanner, Loading, PageHeader, Stat } from '../components/ui';
 import { api } from '../lib/api';
-import { qty, rupees } from '../lib/format';
+import { qty, rupees, withCategory } from '../lib/format';
+import { CategoryTag } from '../components/CategoryTag';
 import { useApp } from '../stores/app';
 
 interface Dash {
@@ -11,8 +12,8 @@ interface Dash {
   completed_bills: number;
   unbilled_count: number;
   unbilled_value: string;
-  low_stock: { name: string; available: string }[];
-  out_of_stock: { name: string }[];
+  low_stock: { name: string; category: string | null; available: string }[];
+  out_of_stock: { name: string; category: string | null }[];
   payments: Record<string, { received: string; refunded: string; net: string; count: number }>;
   tax_collected: string;
   backup_failed: boolean;
@@ -60,8 +61,8 @@ export default function Dashboard() {
             <Card>
               <h2 className="mb-2 text-[20px] font-black">Stock alerts</h2>
               {data.out_of_stock.length === 0 && data.low_stock.length === 0 && <div className="text-[17px] font-bold text-muted">All items are above their minimum.</div>}
-              {data.out_of_stock.map((s) => <div key={s.name} className="flex justify-between py-1 text-[17px] font-extrabold text-rust"><span>{s.name}</span><span>Out of stock</span></div>)}
-              {data.low_stock.map((s) => <div key={s.name} className="flex justify-between py-1 text-[17px] font-extrabold text-amber-ink"><span>{s.name}</span><span>{qty(s.available)} left</span></div>)}
+              {data.out_of_stock.map((s) => <div key={withCategory(s.name, s.category)} className="flex justify-between py-1 text-[17px] font-extrabold text-rust"><span>{s.name}<CategoryTag name={s.category} /></span><span>Out of stock</span></div>)}
+              {data.low_stock.map((s) => <div key={withCategory(s.name, s.category)} className="flex justify-between py-1 text-[17px] font-extrabold text-amber-ink"><span>{s.name}<CategoryTag name={s.category} /></span><span>{qty(s.available)} left</span></div>)}
             </Card>
           </>
         )}

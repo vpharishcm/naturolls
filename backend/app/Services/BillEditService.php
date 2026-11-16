@@ -130,6 +130,7 @@ class BillEditService
         $snapshot = $invoice->snapshot;
         $snapshot['items'] = $items->map(fn ($i) => [
             'name' => $i->product_name,
+            'category' => $i->categoryName(),
             'quantity' => $i->quantity,
             'unit_price' => $i->unit_price,
             'gst_rate' => (float) $invoice->tax_amount > 0 ? $i->gst_rate : 0,

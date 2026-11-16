@@ -9,7 +9,8 @@ import { usePrint } from '../components/Receipt';
 import { useCatalog } from '../hooks/useCatalog';
 import { useOrderDraft, type DraftLine } from '../hooks/useOrderDraft';
 import { api, ApiError } from '../lib/api';
-import { itemLabel, qty, rupees } from '../lib/format';
+import { itemLabel, qty, rupees, withCategory } from '../lib/format';
+import { CategoryTag } from '../components/CategoryTag';
 import type { BillPreview, Customer, DiceForBill, Invoice, Order, Product, Variant } from '../lib/types';
 import { uuid } from '../lib/uuid';
 import { useApp } from '../stores/app';
@@ -95,6 +96,8 @@ function MenuView({ draft, onBill }: { draft: Draft; onBill: () => void }) {
     return products.filter((p) => String(p.category_id) === activeCat);
   }, [products, term, activeCat, quick.data]);
   const hasFavourites = products.some((p) => p.is_favourite);
+  // Search and favourites mix categories, so each item then says which one it is from.
+  const mixed = new Set(shown.map((p) => p.category_id)).size > 1;
 
   const toggleFavourite = async (p: Product) => {
     const set = (value: boolean) => qc.setQueryData<Product[]>(['products'], (rows) => rows?.map((x) => (x.id === p.id ? { ...x, is_favourite: value } : x)));
@@ -219,7 +222,7 @@ function MenuView({ draft, onBill }: { draft: Draft; onBill: () => void }) {
                 {heart}
                 <span className="hidden shrink-0 md:block"><ProductArt product={p} size={44} /></span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[18px] font-black leading-tight">{p.name}</div>
+                  <div className="text-[18px] font-black leading-tight">{p.name}{mixed && <CategoryTag name={p.category_name} />}</div>
                   <div className="flex flex-wrap gap-x-2 text-base font-extrabold text-muted"><span>{rupees(p.price)}</span>{stock}</div>
                 </div>
                 {controls}
@@ -231,6 +234,7 @@ function MenuView({ draft, onBill }: { draft: Draft; onBill: () => void }) {
               <div className="absolute right-0.5 top-0.5 md:right-0 md:top-0">{heart}</div>
               <div className="flex h-20 items-center justify-center md:h-11 port:h-[60px]"><span className="md:hidden"><ProductArt product={p} /></span><span className="hidden md:block port:[&>*]:!h-[58px] port:[&>*]:!w-[58px]"><ProductArt product={p} size={42} /></span></div>
               <div className="text-center text-[19px] font-black leading-tight md:text-[15px] port:text-[17px]">{p.name}</div>
+              {mixed && p.category_name && <div className="text-center text-[14px] font-extrabold leading-tight text-muted">{p.category_name}</div>}
               <div className="flex flex-col items-center md:flex-row md:flex-wrap md:justify-center md:gap-x-1.5 md:text-[14px]">
                 <span className="text-lg font-extrabold text-muted md:text-[15px] port:text-[16px]">{rupees(p.price)}</span>
                 {stock}
@@ -414,7 +418,7 @@ function BillView({ draft, onBack, onPaid }: { draft: Draft; onBack: () => void;
         {current.items?.map((line) => (
           <div key={line.id} className="flex items-center justify-between gap-3 rounded-[18px] bg-white px-4 py-3.5">
             <div className="min-w-0">
-              <div className="text-[20px] font-black">{line.name}</div>
+              <div className="text-[20px] font-black">{line.name}<CategoryTag name={line.category_name} /></div>
               <div className="text-base font-bold text-muted">{qty(line.quantity)} × {rupees(line.unit_price)}</div>
               {line.conflict_note && <div className="text-[15px] font-extrabold text-rust">{line.conflict_note}</div>}
             </div>
@@ -424,7 +428,7 @@ function BillView({ draft, onBack, onPaid }: { draft: Draft; onBack: () => void;
 
         <div className="rounded-[18px] bg-white px-4 py-3 text-[17px] font-extrabold">
           <div className="flex justify-between"><span>Subtotal</span><span>{rupees(p?.subtotal ?? current.subtotal)}</span></div>
-          {dice.choice && diceToSend(diceInfo, dice) && <div className="flex justify-between text-mint"><span>Free: {dice.choice.name} (dice prize)</span><span>{rupees(0)}</span></div>}
+          {dice.choice && diceToSend(diceInfo, dice) && <div className="flex justify-between text-mint"><span>Free: {withCategory(dice.choice.name, dice.choice.category_name)} (dice prize)</span><span>{rupees(0)}</span></div>}
           {discountTotal > 0 && <div className="flex justify-between text-mint"><span>Discount{discountNames.length ? ` · ${discountNames.join(', ')}` : ''}</span><span>−{rupees(discountTotal)}</span></div>}
           {p && Number(p.tax_amount) > 0 && <div className="flex justify-between text-muted"><span>GST {useApp.getState().settings['tax.prices_inclusive'] ? '(included)' : ''}</span><span>{rupees(p.tax_amount)}</span></div>}
         </div>

@@ -180,6 +180,7 @@ class BillingService
                     'staff' => $user->name,
                     'items' => $items->map(fn ($i) => [
                         'name' => $i->product_name,
+                        'category' => $i->categoryName(),
                         'quantity' => $i->quantity,
                         'unit_price' => $i->unit_price,
                         'gst_rate' => $this->settings->get('tax.enabled') ? $i->gst_rate : 0,

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DiceOffersSection } from '../components/DiceOffers';
 import { Badge, Button, Card, Chip, ErrorBanner, Field, inputClass, Loading, Modal, PageHeader, Pager, useBusy } from '../components/ui';
 import { api } from '../lib/api';
-import { dateTime, rupees } from '../lib/format';
+import { dateTime, rupees, withCategory } from '../lib/format';
 import { connectPrinter, deviceConnected, printerSupport, type PrintDriver } from '../lib/printer';
 import type { Category, Product, Settings as SettingsMap } from '../lib/types';
 import { useApp } from '../stores/app';
@@ -325,7 +325,7 @@ function PromoForm({ promo, onClose }: { promo: Promo | null; onClose: () => voi
       </div>
       {choices && choices.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {choices.map((c) => <Chip key={c.id} active={ids.includes(c.id)} onClick={() => flip(c.id)}>{c.name}</Chip>)}
+          {choices.map((c) => <Chip key={c.id} active={ids.includes(c.id)} onClick={() => flip(c.id)}>{'category_name' in c ? withCategory(c.name, c.category_name) : c.name}</Chip>)}
         </div>
       )}
       {isBuyGet && (
@@ -336,7 +336,7 @@ function PromoForm({ promo, onClose }: { promo: Promo | null; onClose: () => voi
           </div>
           {getChoices && getChoices.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {getChoices.map((c) => <Chip key={c.id} tone="mint" active={getIds.includes(c.id)} onClick={() => flipGet(c.id)}>{c.name}</Chip>)}
+              {getChoices.map((c) => <Chip key={c.id} tone="mint" active={getIds.includes(c.id)} onClick={() => flipGet(c.id)}>{'category_name' in c ? withCategory(c.name, c.category_name) : c.name}</Chip>)}
             </div>
           )}
         </>

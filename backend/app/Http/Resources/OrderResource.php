@@ -37,6 +37,7 @@ class OrderResource extends JsonResource
                 'product_variant_id' => $i->product_variant_id,
                 'stock_key' => $i->stock_key,
                 'name' => $i->product_name,
+                'category_name' => $i->categoryName(),
                 'unit_price' => $i->unit_price,
                 'gst_rate' => $i->gst_rate,
                 'quantity' => $i->quantity,

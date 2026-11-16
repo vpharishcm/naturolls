@@ -42,7 +42,7 @@ class ProductionService
             $this->audit->record($user, 'production.recorded', $batch, null, $data);
             $this->audit->activity($user, 'production.recorded', 'Batch #'.$batch->id);
 
-            return $batch->load('items.product', 'user');
+            return $batch->load('items.product.category', 'user');
         });
     }
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Badge, Button, Card, Chip, ErrorBanner, Field, inputClass, Modal, useBusy } from './ui';
 import { api } from '../lib/api';
-import { rupees } from '../lib/format';
+import { rupees, withCategory } from '../lib/format';
 import type { Category, DiceFace, DiceFaceType, DiceOffer, Product } from '../lib/types';
 
 const PIPS = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
@@ -134,7 +134,7 @@ function DiceOfferForm({ offer, onClose }: { offer: DiceOffer | null; onClose: (
                     <div className="text-[15px] font-extrabold text-muted">Categories (everything in them)</div>
                     <div className="flex flex-wrap gap-2">{categories.data?.map((c) => <Chip key={c.id} tone="mint" active={f.category_ids?.includes(c.id)} onClick={() => flip(i, 'category_ids', c.id)}>{c.name}</Chip>)}</div>
                     <div className="text-[15px] font-extrabold text-muted">Items</div>
-                    <div className="flex flex-wrap gap-2">{products.data?.filter((p) => p.is_active).map((p) => <Chip key={p.id} tone="mint" active={f.product_ids?.includes(p.id)} onClick={() => flip(i, 'product_ids', p.id)}>{p.name}</Chip>)}</div>
+                    <div className="flex flex-wrap gap-2">{products.data?.filter((p) => p.is_active).map((p) => <Chip key={p.id} tone="mint" active={f.product_ids?.includes(p.id)} onClick={() => flip(i, 'product_ids', p.id)}>{withCategory(p.name, p.category_name)}</Chip>)}</div>
                   </>
                 )}
               </>
