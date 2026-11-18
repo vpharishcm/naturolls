@@ -23,7 +23,7 @@ interface Dash {
 const SHOW_MS = 5000;
 const HIDDEN = '••••';
 
-/** Today's figures stay hidden so customers at the counter can't read them; the eye shows them for a few seconds. */
+/** Today's sales figures stay hidden so customers at the counter can't read them; the eye shows them for a few seconds. */
 function useReveal() {
   const [shown, setShown] = useState(false);
   useEffect(() => {
@@ -68,7 +68,8 @@ export default function Dashboard() {
               <Stat label="Today's sales" value={show(rupees(data.total_sales))} tone="mint" />
               <Stat label="Today's orders" value={show(data.total_orders)} />
               <Stat label="Completed bills" value={show(data.completed_bills)} />
-              <Stat label="Unbilled orders" value={<>{show(data.unbilled_count)} <span className="text-lg text-muted">· {show(rupees(data.unbilled_value))}</span></>} tone="berry" />
+              {/* Always shown, so staff can keep track of orders still waiting to be billed. */}
+              <Stat label="Unbilled orders" value={<>{data.unbilled_count} <span className="text-lg text-muted">· {rupees(data.unbilled_value)}</span></>} tone="berry" />
             </div>
 
             <Card>
